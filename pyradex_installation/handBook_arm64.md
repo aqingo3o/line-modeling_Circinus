@@ -94,7 +94,7 @@ I’ve do some searching and I think the problem is because distutils 這個東�
 conda install “setuptools <65”
 然後接著再試一次
 f2py -c -m radex --f77flags="-fPIC -fno-automatic" --fcompiler=gfortran  -I/Users/aqing/pyradex_arm/pyradex/Radex/src  *.f
-做完著個之後，應該會出現
+做完著個之後，應該會出現 .so file like ‘radex.cpython-310-darwin.so’這樣的，就是編譯完成的東西
 
 不確定在下載完 setuptools 之後直接做
 python3 setup.py install_radex install_myradex install
@@ -111,9 +111,59 @@ Line #49 in radex.inc:"      parameter(hplanck = 6.6260963d-27)   "
 將原本的 ~/ppyradex_arm/pyradex/Radex/src/radex.inc 換成補丁中的 radex.inc
 就可以解決這個問題 你當然可以自己修改radex.inc，就是把裡面能找到的代表指數的d都換成ｅ
 不知道會又什麼後果，但改寫了之後世界安靜多了
+執行一次 
+```python3 setup.py install_myradex install```  
+檢驗成果  
+**注意，這邊不用再下  install_radex in the command 了，不然會把redex.inc覆寫掉**
 
 紅色的error 是需要處理的！
 應該會說像是
+sub_global_variables.f90:41:54:
+
+   41 |   double precision, parameter :: phy_NaN = transfer(X'FFFFFFFFFFFFFFFF', 0D0)
+      |                                                      1
+Error: Hexadecimal constant at (1) uses nonstandard X instead of Z [see '-fallow-invalid-boz']
+make: *** [sub_global_variables.o] Error 1
+gfortran -O3 -fPIC -c sub_global_variables.f90
+這樣的東西
+就是說應該要用Z而不是用X，可以直接進到~/ppyradex_arm/pyradex/myradex/sub_global_variables.f90中對應的行數(for example, here is line 41) 把Z改成X
+但先不要急，因為會發現改完這個後還有另一個也出現在 /sub_global_variables.f90 中的問題
+我一起做了補丁，如果對於細節不感興趣的話請直接跳到下下一步驟
+
+承上，解決Z,X 之後執行
+python3 setup.py install_myradex install
+會出現新的問題，像是
+Error: BOZ literal constant at (1) cannot be an actual argument to 'transfer'
+大意是 BOZ(二進位八進位十六進位？)不能放在 transsfer() 中
+
+看這個error message 發現他是試圖要定義一個 NAN
+用一些新語法改寫就可以拯救這些問題
+找到報錯的那行程式（文件名稱和行數都會在error message 中顯示，應該都在 myradex/之下）
+先定義一個變數叫NaN_bits，型態是整數(-225.... is IEEE nan pattern)
+integer(8), parameter :: NaN_bits = -2251799813685248_8
+然後transfer 中傳入剛定義的整數變數，取代原本的BOZ
+double precision, parameter :: phy_NaN = transfer(NaN_bits, 0D0)
+
+其實我也是做得膽戰心驚的，除了 sub_global_variables.f90
+sub_trivials.f90也會有類似的問題
+我把我改過的這倆.f90 都放在補丁中了
+可以直接斤他們取代原本的檔案使用
+
+最後一次！
+python3 setup.py install_myradex install
+應該會發現一開始的兩行
+Found shared object files=[] for RADEX.  (if that is a blank, it means radex didn't install successfully) 
+Found shared object files=[] for RADEX.  (if that is a blank, it means fjdu's myradex didn't install successfully)
+[]中都不是空白的了
+恭喜您，現在隨便開一個.py file
+import radex 
+應該不會出現module not found 了
+恭喜（2）
+
+接下來的 path 設定請參考k大
+因為我不會用 arm 的 pyradex，所以應該不會去研究怎麼設這環境變數
+嘻嘻
+
 
 
  
