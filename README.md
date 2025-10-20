@@ -1,7 +1,7 @@
 # line-modeling_Circinus
 **⚠️ This repo mainly serves as a personal log of the research process and may contain contain many imperfect operations .**  
 >
-**👾 Current Progress:** Fixing some fortran issue for pyradex on mac :(
+**👾 Current Progress:** Fixing some fortran issue for pyradex on mac(x86-arch by rosetta2) :(
 >  
 - 跪下來感謝在各大論壇間接或直接幫助我的大佬和 GenAI，人類(類人？)群星閃耀時...  
 - 對於我的檔案結構是一坨（）我感到非常抱歉
