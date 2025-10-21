@@ -10,7 +10,8 @@
 ## Environment (2025.10.16)
 **Host System:** feifei (macOS Sequoia 15.6.1, M3 chip, arm64)  
 The development largely relies on a virtual environment created with miniconda(x86) via Rosetta2 to run x86-64 arch on fefei.  
-The main programming language in the venv is Python 3.10.
+The main programming language in the venv is Python 3.10.  
+Python packages I'm using list in `asrto_py310_(date).yml`
 ## Tools
 - CASA 6.4.1 (Ubuntu 20+)
 - modular CASA (via Rosetta2)
