@@ -96,34 +96,79 @@ cd ~/astro_tools/pyradex
 ls
 ```
 
-依照指示跑跑這個
+依照指示跑跑這個 (python or pyhton3 depend on your computer setting) 
+```
+python setup.py install_radex install_myradex install
+```
 
-python3 setup.py install_radex install_myradex install (python or pyhton3 depend on your computer setting) 先執行看看，但應該會遇到第一個錯：... fail to resolve ‘personal.sron.nl’ 之類的 這是因為 radex 的下載點網址好像改過 install_radex.py 裡面大概30行那邊，有一個網址，那個要改成現在(2025.10)能用的 you can find and use pyradex_installation_patch/install_radex.py in my github or find the usable url through browser(“radex install” in google and 去radex官網找，搞不好他網址又改過哩？) 恭喜，這個是所有補丁中我最有自信的，因偉這是 python:))) 請安心使用
+先執行看看，但應該會遇到第一個錯：
+```
+... fail to resolve ‘personal.sron.nl’
+```
+具體修改請見`details`, 總之這邊可以使用補丁`install_radex.py`  
+直接貼到`~/astro_tools/pyradex` （或對應路徑）就可以了，取代原有檔案
 
-換了新的install_radex.py(或您很幸運地沒遇到上個問題) do it again python3 setup.py install_radex install_myradex install than you may come into tons of message爆破你的terminal like Found shared object files=[] for RADEX.  (if that is a blank, it means radex didn't install successfully) Found shared object files=[] for RADEX.  (if that is a blank, it means fjdu's myradex didn't install successfully) … eval() arg1 must be a string, or something like that seems like nothing success hahapy that’s because some version issue make sure the python version and numpy version ur using is not too new(yes, TOO NEW TO WORK)
+換了新的install_radex.py(或您很幸運地沒遇到上個問題) do it again 
+```
+python setup.py install_radex install_myradex install
+```
 
-如果版本什麼的都確定之後， 再進行一次 會出現一些作者給的提示（這是在尋寶嗎） 或是你在之前的步驟可能就看過這些抱歉，我有點忘記我當時的試錯順序了 Try running the command manually:
+than you may come into tons of message 爆破你的 terminal like:
+```
+Found shared object files=[] for RADEX.  (if that is a blank, it means radex didn't install successfully)
+Found shared object files=[] for RADEX.  (if that is a blank, it means fjdu's myradex didn't install successfully)
+...
+Line #49 in radex.inc:" parameter(hplanck = 6.6260963d-27) " get_parameters: got "eval() arg 1 must be a string, bytes or code object" on 4
+...
+Error sub_global_variables.f90:41:54:
+41 | double precision, parameter :: phy_NaN = transfer(X'FFFFFFFFFFFFFFFF', 0D0)  
+```
+or something like that seems like nothing success hahapy  
 
-cd Radex/src/ f2py -c -m radex --f77flags="-fPIC -fno-automatic" --fcompiler=gfortran -I/Users/aqing/pyradex/Radex/src *.f cd - mv Radex/src/*so pyradex/radex/
+Here we got two problem, one is from`radex.inc` another is from`sub_global_variables.f90`  
+I am going to fix the `sub_global_variables.f90` one because it is an **Error**
+這個問題的詳細細節依然請見 `details` 簡單來說就是定義 null 的方式變了，新的編譯器不認識原本的寫法  
+在 `~/astro_tools/pyradex/myRadex` 放入補丁 `sub_global_variables.f90` and `sub_trivials.f90` 就可以解決
 
-See also Github issues 39 and 40
+再試一次
+```
+python setup.py install_radex install_myradex install
+```
 
-嘗試這個 （請記得將（Users/aqing/pyradex_arm）那串改成你自己的path, 或是作者的提示應該會生成符合你正使用路徑的指令，總之就是不要直接拷我的這段，這只是一個演示） cd Radex/src/ f2py -c -m radex --f77flags="-fPIC -fno-automatic" --fcompiler=gfortran -I/Users/aqing/pyradex_arm/pyradex/Radex/src *.f 會獲得一個看起來比較熟悉的東西 ModuleNotFoundError: No module named 'distutils.msvccompiler' f2py 開頭那行以我的有線知識看起來應該是手動編譯的指令, whatever. I’ve do some searching and I think the problem is because distutils 這個東西剛好在2025.10 從<3.11的pyhon版本中移除了（while python3.12+根本就沒有這種東西）
+應該可以看到
+```
+Found shared object files=['radex.so'] for RADEX. (if that is a blank, it means radex didn't install successfully)
+Found shared object files=[] for RADEX. (if that is a blank, it means fjdu's myradex didn't install successfully)
+```
+`radex` 成功了！恭喜一半！當`radex.so` 出現在[]之後，就可以在`~/astro_tools/pyradex/Radex/src`中放入補丁`radex.inc`  
+這個個改動詳見 `details` 簡單來說就是指數符號新舊的差異  
+在使用了 補丁`radex.inc` 之後，安裝命令要從`python setup.py install_radex install_myradex install`改成
+```
+python setup.py install_myradex install
+```
+移除install_radex（避免覆寫.inc），所以必須等 radex 裝好之後（`radex.so` 出現）才使用這個補丁
 
-經過大概一萬年的搜尋，在stack overFlow上找到解方了 不得不承認在 GenAI盛行的年代，把error message 直接貼在 google 上 also work. thank overFlow 老哥 需要特定版本的 setuptools 代替 distutlis 的功能，透過 conda 下載 conda install “setuptools <65” 然後接著再試一次 f2py -c -m radex --f77flags="-fPIC -fno-automatic" --fcompiler=gfortran -I/Users/aqing/pyradex_arm/pyradex/Radex/src *.f 做完著個之後，應該會出現 .so file like ‘radex.cpython-310-darwin.so’這樣的，就是編譯完成的東西
+跑了一次`python setup.py install_myradex install`之後  
+出現了一大桶新的 warning
+```
+warning: linalg_nleq1.f:1513:21:
+1513 | CALL XERBLA('DGER ',INFO) | 1 Warning: Character length of actual argument shorter than of dummy argument 'srname' (5/6) at (1) 
 
-不確定在下載完 setuptools 之後直接做 python3 setup.py install_radex install_myradex install 會不會達到一樣的結果，總之，大家這邊都要再做一次這個喔 python3 setup.py install_radex install_myradex install
+warning: opkda1.f:123:72:
+123 | 110 PC(I) = PC(I-1) + FNQM1*PC(I) | 1 Warning: Fortran 2018 deleted feature: DO termination statement which is not END DO or CONTINUE with label 110 at (1) opkda1.f 
+...
+warning: opkda1.f:1255:72:
+1255 | 1 RWORK(LACOR), IA, JA, RWORK(LWM), RWORK(LWM), IPFLAG, F, JAC) | 1 Error: Type mismatch in argument 'iwk' at (1); passed REAL(8) to INTEGER(4) opkda1.f:9499:72:
+...
+9499 | 2 RES, JAC, ADDA) | 1 Error: Type mismatch in argument 'iwk' at (1); passed REAL(8) to INTEGER(4) 
+```
 
-這時候應該會出現很多很多行長得像這個的 Line #49 in radex.inc:" parameter(hplanck = 6.6260963d-27) " get_parameters: got "eval() arg 1 must be a string, bytes or code object" on 4 以及一些 red Error ‘got "eval() arg 1 must be’ is because in radex.inc, it used to use ‘d’ 代表次方 但現在的 python or something else that work on translating 只認e as the notation of power 這大體來說不影響，但因為超多行超煩，所以可以使用 patch 中的 radex.inc 將原本的 ~/ppyradex_arm/pyradex/Radex/src/radex.inc 換成補丁中的 radex.inc 就可以解決這個問題 你當然可以自己修改radex.inc，就是把裡面能找到的代表指數的d都換成ｅ 不知道會又什麼後果，但改寫了之後世界安靜多了 執行一次 python3 setup.py install_myradex install
-檢驗成果
-注意，這邊不用再下 install_radex in the command 了，不然會把redex.inc覆寫掉
+這個就是我想讚嘆 fortran 真嚴格，第1513航少一個空格，無傷大雅但我依然附上了相應的補丁，可以直接使用
 
-紅色的error 是需要處理的！ 應該會說像是 sub_global_variables.f90:41:54:
+裡出老多錯了，麻煩鼠，等下再修理你
 
-41 | double precision, parameter :: phy_NaN = transfer(X'FFFFFFFFFFFFFFFF', 0D0) | 1 Error: Hexadecimal constant at (1) uses nonstandard X instead of Z [see '-fallow-invalid-boz'] make: *** [sub_global_variables.o] Error 1 gfortran -O3 -fPIC -c sub_global_variables.f90 這樣的東西 就是說應該要用Z而不是用X，可以直接進到~/ppyradex_arm/pyradex/myradex/sub_global_variables.f90中對應的行數(for example, here is line 41) 把Z改成X 但先不要急，因為會發現改完這個後還有另一個也出現在 /sub_global_variables.f90 中的問題 我一起做了補丁，如果對於細節不感興趣的話請直接跳到下下一步驟
+幹啊我真的沒招了 ** 雖然在output 的最後說了 Installation has completed. 但output 最開始的那兩行，fjdu's myradex 那邊看起來就是東西沒裝好，屁眼 所以要續努力desu
 
-承上，解決Z,X 之後執行 python3 setup.py install_myradex install 會出現新的問題，像是 Error: BOZ literal constant at (1) cannot be an actual argument to 'transfer' 大意是 BOZ(二進位八進位十六進位？)不能放在 transsfer() 中
 
-看這個error message 發現他是試圖要定義一個 NAN 用一些新語法改寫就可以拯救這些問題 找到報錯的那行程式（文件名稱和行數都會在error message 中顯示，應該都在 myradex/之下） 先定義一個變數叫NaN_bits，型態是整數(-225.... is IEEE nan pattern) integer(8), parameter :: NaN_bits = -2251799813685248_8 然後transfer 中傳入剛定義的整數變數，取代原本的BOZ double precision, parameter :: phy_NaN = transfer(NaN_bits, 0D0)
 
-其實我也是做得膽戰心驚的，除了 sub_global_variables.f90 sub_trivials.f90也會有類似的問題 我把我改過的這倆.f90 都放在補丁中了 可以直接斤他們取代原本的檔案使用
+
