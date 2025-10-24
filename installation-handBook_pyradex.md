@@ -1,12 +1,14 @@
 # pyradex Installation handbook for Linux machine (Ubuntu)
-I hope this could help you deal with the OLD language tool that widly use in radical trandfer modeling.  
-I've try to install pyrdex on my laptop(macOS 15) but I 悲慘地 fail on both arm-64 and x86-64(via Rosetta) arch because of some compilition issue of `myradex`:(  
-Then I turn to Linux machine and I get what I want, so 我將要分享我安裝的步驟以及中間用到的補丁，希望能幫到大家  
+I hope this handbook can help you work with this **legacy** tool that is still widely used in radiative transfer modeling.  
+I tried to install pyradex on my laptop (macOS 15, named feifei:)), but sadly I failed on both arm64 and x86-64 (via Rosetta2) architectures due to compilation issues with `myRadex`.  
+Later, I switched to a Linux machine and FINALLY got it working!  
+So here, I’ll share the installation steps and the patch I used, hoping it can help others facing the same problem <3
 
-All the 功德屬於寫出 radex, 寫出 wapper, 在 stackOverflow 上幫助我的 brillirant brain and GenAI.  
-(怎麼標注別人的 repo 啊)
+All the credit and reputation goes to the brilliant minds who wrote RADEX, developed its python wrapper, answered related questions on stackOverflow.  
+Much of this work also refers to **keflavich**’s repo `pyradex`.
 
-很大的參考了 k大「Installation procedure for the f2py-wrapped version」的部分  
+This handbook mainly focuses on the installation tutorial.  
+For details on the modifications and references of patches, please see `patch_ref.md`.
 
 ## Environment info
 - **OS**: Ubuntu20.04
@@ -17,7 +19,7 @@ All the 功德屬於寫出 radex, 寫出 wapper, 在 stackOverflow 上幫助我�
 - **numpy** 1.26.2
 
 ## Patches
-應該有在塗個資料夾中釋出  
+應該有在同個資料夾中釋出  
 使用的大原則是，出現了問題(error)再用，搞不好你克隆下來的 repo 是 k大 更新過的了  
 請小心使用，因為我自己也裝得亂七八糟的。  
 但至少近年，我做的補丁應該會有一定的作用（在進行安裝的環節可以有效減少報錯...僅此而已  
@@ -108,6 +110,8 @@ python setup.py install_radex install_myradex install
 具體修改請見`details`, 總之這邊可以使用補丁`install_radex.py`  
 直接貼到`~/astro_tools/pyradex` （或對應路徑）就可以了，取代原有檔案
 
+
+### 開始編譯
 換了新的install_radex.py(或您很幸運地沒遇到上個問題) do it again 
 ```
 python setup.py install_radex install_myradex install
@@ -127,7 +131,7 @@ or something like that seems like nothing success hahapy
 
 Here we got two problem, one is from`radex.inc` another is from`sub_global_variables.f90`  
 I am going to fix the `sub_global_variables.f90` one because it is an **Error**
-這個問題的詳細細節依然請見 `details` 簡單來說就是定義 null 的方式變了，新的編譯器不認識原本的寫法  
+這個問題的詳細細節依然請見 `patch_ref.md` 簡單來說就是定義 null 的方式變了，新的編譯器不認識原本的寫法  
 在 `~/astro_tools/pyradex/myRadex` 放入補丁 `sub_global_variables.f90` and `sub_trivials.f90` 就可以解決
 
 再試一次
@@ -141,7 +145,7 @@ Found shared object files=['radex.so'] for RADEX. (if that is a blank, it means 
 Found shared object files=[] for RADEX. (if that is a blank, it means fjdu's myradex didn't install successfully)
 ```
 `radex` 成功了！恭喜一半！當`radex.so` 出現在[]之後，就可以在`~/astro_tools/pyradex/Radex/src`中放入補丁`radex.inc`  
-這個個改動詳見 `details` 簡單來說就是指數符號新舊的差異  
+這個個改動詳見 `patch_ref.md`, 簡單來說就是指數符號新舊的差異  
 在使用了 補丁`radex.inc` 之後，安裝命令要從`python setup.py install_radex install_myradex install`改成
 ```
 python setup.py install_myradex install
@@ -163,12 +167,16 @@ warning: opkda1.f:1255:72:
 9499 | 2 RES, JAC, ADDA) | 1 Error: Type mismatch in argument 'iwk' at (1); passed REAL(8) to INTEGER(4) 
 ```
 
-這個就是我想讚嘆 fortran 真嚴格，第1513航少一個空格，無傷大雅但我依然附上了相應的補丁，可以直接使用
+這邊像要跟大家說的是，後兩個關於iwk的警告在 macOS 上會是錯誤！  
+但，因為一些我不懂的理由（或許是gfortran版本？） Linux machine上將這些視為警告、不影響編譯  
 
-裡出老多錯了，麻煩鼠，等下再修理你
 
-幹啊我真的沒招了 ** 雖然在output 的最後說了 Installation has completed. 但output 最開始的那兩行，fjdu's myradex 那邊看起來就是東西沒裝好，屁眼 所以要續努力desu
+### 測試
+當出現了
+```
 
+```
+這倆 `.so` 代表大成功，可以使用 k 大提供的測試碼
 
 
 
