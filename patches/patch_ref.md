@@ -39,7 +39,10 @@ sub_global_variables.f90:41:54:
 其實我也是做得膽戰心驚的，除了 sub_global_variables.f90 sub_trivials.f90也會有類似的問題 我把我改過的這倆.f90 都放在補丁中了 可以直接斤他們取代原本的檔案使用
 
 ## linalg_nleg1.f
-忘記是什麼了但是一點點點小問題，只佔一行的警告所以不用也可以的對吧對的
+```
+1513 | CALL XERBLA('DGER ',INFO) | 1 Warning: Character length of actual argument shorter than of dummy argument 'srname' (5/6) at (1)
+```
+想讚嘆 fortran 真嚴格，第1513行少一個空格，無傷大雅但我依然附上了相應的補丁，可以直接使用
 
 ## opkda1.f
 這邊除了很多警告之外，在 feifei 上弄的時候還給我報一個巨大解不了錯  
@@ -48,3 +51,8 @@ sub_global_variables.f90:41:54:
 這真的超多 我他媽改到直接睡在機房，希望能幫到大家啦哈哈  
 簡單來說就是 DO 和什麼東西回圈的寫法在語法更新中出現的問題  
 具體來說我還要回去翻一下某些紙質的東西，但是在這邊先暫個做因為我好想把這個樹枝推上去  
+```
+opkda1.f:123:72:
+
+123 | 110 PC(I) = PC(I-1) + FNQM1*PC(I) | 1 Warning: Fortran 2018 deleted feature: DO termination statement which is not END DO or CONTINUE with label 110 at (1)
+```
