@@ -174,9 +174,11 @@ warning: opkda1.f:1255:72:
 ### 測試
 當出現了
 ```
-
+Found shared object files=['radex.so'] for RADEX.  (if that is a blank, it means radex didn't install successfully)
+Found shared object files=['wrapper_my_radex.cpython-310-x86_64-linux-gnu.so'] for RADEX.  (if that is a blank, it means fjdu's myradex didn't install successfully)
 ```
-這倆 `.so` 代表大成功，可以使用 k 大提供的測試碼
+這倆 `.so` 代表大成功  
+其他的測試可以使用 k 大提供的測試碼  
 
 
 
