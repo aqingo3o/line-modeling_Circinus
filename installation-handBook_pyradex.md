@@ -1,5 +1,5 @@
 # pyradex Installation handbook for Linux machine (Ubuntu)
-I hope this handbook can help you work with this **legacy** tool that is still widely used in radiative transfer modeling.  
+Hope this handbook can help you work with this **legacy** tool that is still widely used in radiative transfer modeling.  
 I tried to install pyradex on my laptop (macOS 15, named feifei:)), but sadly I failed on both arm64 and x86-64 (via Rosetta2) architectures due to compilation issues with `myRadex`.  
 Later, I switched to a Linux machine and FINALLY got it working!  
 So here, I’ll share the installation steps and the patch I used, hoping it can help others facing the same problem <3
@@ -19,16 +19,16 @@ For details on the modifications and references of patches, please see `patch_re
 - **numpy** 1.26.2
 
 ## Patches
-應該有在同個資料夾中釋出  
+在同個 repo 中釋出  
 使用的大原則是，出現了問題(error)再用，搞不好你克隆下來的 repo 是 k大 更新過的了  
 請小心使用，因為我自己也裝得亂七八糟的。  
-但至少近年，我做的補丁應該會有一定的作用（在進行安裝的環節可以有效減少報錯...僅此而已  
+但至少近年，我做的補丁應該會有一定的作用（在進行安裝的環節可以有效減少報錯...僅此而已    
 
-請查收我為您打包的patch 
-**我的建議是 出了問題再用！** 也就是，先嘗試執行k提供的安裝步驟，出了問題再使用我的補丁
-（雖然改的都是一些語法之類的，但因為我對 fortran 完全的新手，不能確定我一定做了最好的操作  
-做的所有事情絕大部分都是在 stack overFlow, K的issue, GenAI等多方參考下引用的，特此警告）
-改過的地方（應該）會有「modi by qing」的標註，除了 op1的warning，因為那大概有500+
+請查收我為您打包的patch  
+**我的建議是 出了問題再用！** 也就是，先嘗試執行k提供的安裝步驟，出了問題再使用我的補丁  
+（雖然改的都是一些語法之類的，但因為我對 fortran 完全的新手，不能確定我一定做了最好的操作    
+做的所有事情絕大部分都是在 stack overFlow, K的issue, GenAI等多方參考下引用的，特此警告）  
+改過的地方（應該）會有「modi by qing」的標註，除了 op1的warning，因為那大概有500+  
 
 ## Steps
 ### Set the environment
