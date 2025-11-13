@@ -1,6 +1,7 @@
 # pyradex Installation handbook for Linux machine (Ubuntu)
 Hope this handbook can help you work with this **legacy** tool that is still widely used in radiative transfer modeling.  
-I tried to install pyradex on my laptop (macOS 15, named feifei:)), but sadly I failed on both arm64 and x86-64 (via Rosetta2) architectures due to compilation issues with `myRadex`.  
+I tried to install pyradex on my laptop (macOS 15, named feifei:)), but sadly I failed on both arm64 and x86-64 (via Rosetta2) architectures due to compilation issues with `myRadex`.   
+
 Later, I switched to a Linux machine and FINALLY got it working!  
 So here, I’ll share the installation steps and the patch I used, hoping it can help others facing the same problem <3
 
@@ -19,68 +20,63 @@ For details on the modifications and references of patches, please see `patch_re
 - **numpy** 1.26.2
 
 ## Patches
-在同個 repo 中釋出  
-使用的大原則是，出現了問題(error)再用，搞不好你克隆下來的 repo 是 k大 更新過的了  
-請小心使用，因為我自己也裝得亂七八糟的。  
-但至少近年，我做的補丁應該會有一定的作用（在進行安裝的環節可以有效減少報錯...僅此而已    
+Release in *line-modeling_Circinus/patches*  
+**ONLY apply them if you run into errors.**  Try following keflavich’s installation steps first. Your cloned repo might already be up-to-date.
+Most fixes are just little syntax edits to prevent install errors and warnings. But I’m totally new to Fortran, can’t promise they’re the “best” solutions.   
 
-請查收我為您打包的patch  
-**我的建議是 出了問題再用！** 也就是，先嘗試執行k提供的安裝步驟，出了問題再使用我的補丁  
-（雖然改的都是一些語法之類的，但因為我對 fortran 完全的新手，不能確定我一定做了最好的操作    
-做的所有事情絕大部分都是在 stack overFlow, K的issue, GenAI等多方參考下引用的，特此警告）  
-改過的地方（應該）會有「modi by qing」的標註，除了 op1的warning，因為那大概有500+  
+Changes should be marked with **“modi by qing on (date)”**, except for warnings in *opkda1.f*  (there were like 500+ of those).  
+My own installation setup is honestly quite chaotic:( so please import the patches carefully.  
+Still, they should help reduce installation errors, at least for now.   
 
 ## Steps
-### Set the environment
-Because 系統的python是python3.8, which is too old to 裝 astropy==6.1.2 numpy==1.26.2  
-並且我害怕爆破實驗室的電腦，所以開了個虛擬環境，我用了 miniconda  
-這邊我叫他 astro_py310，或是隨便的名字，all depends on you
+### 0. Set the environment
+The default system Python of lab machine is python3.8, which is too old to install packages like `astropy==6.1.2` and `numpy==1.26.2`.  
+Since I didn’t want to risk breaking the lab’s system Python, I decided to set up a virtual environment using `miniconda`.  
+
+I named mine `astro_py310`, but any name is okkkk.
 ```
 conda create -n astro_py310 python=3.10
 conda activate astro_py310
 ```
 
-進入虛擬環境，安裝相依的 python 套件  
-因為 raedx 是一個 fortran 湯底的東西，所以numpy的版本很重要
-再新一點的（numpy2.0）好像不行，總之我用1.26成功了，供大家參考
-conda install seems can't find `astroqurey` and `spec`, so I use pip
+Once you’re inside the virtual environment, install the required Python packages.  
+Because raedx is a Fortran-based application, the `numpy` version really matters. Newer ones (like `numpy2.0+`) seem incompatible... I use `numpy==1.26.2` and it works, so you can take that as a ref.  
+Also, `conda install` doesn’t seem to find `astroquery` or `specutils`, so I installed them via `pip` instead.
 ```
 pip install astropy==6.1.2 numpy==1.26.2
 pip install astroquery
 pip install specutils
 ```
 
-接下來安裝編譯器，因爲 `RADEX` 是 fortran 湯底的，所以需要 `gfortran`  
-可以先用倆command這個看看電腦裡裝過`gfortran`沒
+You’ll need a working `gfortran` compiler beacuse raedx is a Fortran-based application. Check if it’s already installed on your system:
 ```
 gfortran --version
 which gfortran
 ```
 
-安裝 `gfortran`
+If not, install it using:
 ```
 sudo apt update
 sudo apt install gfortran
 ```
 
-因為某些原因 i describe in `installation-details.md`  
-you also need this for 編譯順利  
-在這邊感謝 Stack overflow 上的 ()，謝謝他的人性光輝  
+Because of some issues I described in */patches/patch_ref.md*, you’ll also need to install an older version `setuptools` to ensure a smooth build process.
+Special thanks to the kind souls on Stack Overflow, 人類群星閃耀時 ✨
 ```
 conda install “setup tools<65”
 ```
-**以上幾乎是環境設置的所有前置工作**
+**That’s almost all the preparation you need for setting up the environment.**
 
-### Installationnn
-接下來的步驟絕對標準應該參考 k 的github  
-這邊只是提供一些經驗之談，大家斟酌相信（因為我只是一個沒畢業的瓠瓜） 
 
-接下來要 clone 別人的repo，所以先確定有git工具  
+### 1. Installationnn
+The following steps are based on keflavich’s repo-*pyradex*, which should be considered as the authoritative source.  
+Here I’m just sharing some personal experience. You should 決定 to belive me or not because I’m just an *Lagenaria siceraria* .
+
+Make sure you have git installed first: 
 ```
 git —version
 ```
-接下來的步驟將會在當前路徑下建立一個名為`pyradex/`的資料夾，所以先 cd 到你想放這資料夾的地方  
-比如
+Next, we’ll clone the repository *pyradex*. This commands will create a folder named pyradex/ in the current directory, so first `cd` to wherever you want that folder to be, for example:
 ```
 cd ~/astro_tools
 ```
@@ -170,7 +166,7 @@ warning: opkda1.f:1255:72:
 這邊像要跟大家說的是，後兩個關於iwk的警告在 macOS 上會是錯誤！  
 但，因為一些我不懂的理由（或許是gfortran版本？） Linux machine上將這些視為警告、不影響編譯  
 
-### 測試
+### Testing & Ensureeee
 當出現了
 ```
 Found shared object files=['radex.so'] for RADEX.  (if that is a blank, it means radex didn't install successfully)
@@ -182,7 +178,6 @@ Found shared object files=['wrapper_my_radex.cpython-310-x86_64-linux-gnu.so'] f
 ## Appendix
 裝成功後的終端訊息，保留這個東西方便以後查查什麼東西的  
 隨便，並非什麼具有參考價值的東西  
-
 ```
 Found shared object files=['radex.so'] for RADEX.  (if that is a blank, it means radex didn't install successfully)
 Found shared object files=['wrapper_my_radex.cpython-310-x86_64-linux-gnu.so'] for RADEX.  (if that is a blank, it means fjdu's myradex didn't install successfully)
