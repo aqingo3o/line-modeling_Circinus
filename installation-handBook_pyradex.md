@@ -9,7 +9,7 @@ All the credit and reputation goes to the brilliant minds who wrote RADEX, devel
 Much of this work also refers to **keflavich**’s repo `pyradex`.
 
 This handbook mainly focuses on the installation tutorial.  
-For details on the modifications and references of patches, please see `patch_ref.md`.
+For details on the modifications and references of patches, please see *this-repo/patches/patch_ref.md*.
 
 ## Environment info
 - **OS**: Ubuntu20.04
@@ -60,60 +60,67 @@ sudo apt update
 sudo apt install gfortran
 ```
 
-Because of some issues I described in */patches/patch_ref.md*, you’ll also need to install an older version `setuptools` to ensure a smooth build process.
+Because of some issues I described in */patches/patch_ref.md*, you’ll also need to install an older version `setuptools` to ensure a smooth build process.  
 Special thanks to the kind souls on Stack Overflow, 人類群星閃耀時 ✨
 ```
 conda install “setup tools<65”
 ```
-**That’s almost all the preparation you need for setting up the environment.**
+**That’s almost all the preparation you need for setting up the environment.**  
 
 
-### 1. Installationnn
+### 1. Installation
 The following steps are based on keflavich’s repo-*pyradex*, which should be considered as the authoritative source.  
-Here I’m just sharing some personal experience. You should 決定 to belive me or not because I’m just an *Lagenaria siceraria* .
+Here I’m just sharing some personal experience. You should 決定 to belive me or not because I’m just a *Lagenaria siceraria* .  
 
-Make sure you have git installed first: 
+Make sure you have git installed first:  
 ```
 git —version
 ```
-Next, we’ll clone the repository *pyradex*. This commands will create a folder named pyradex/ in the current directory, so first `cd` to wherever you want that folder to be, for example:
+Next, we’ll clone the repository *pyradex*.  
+This commands will create a folder named *pyradex/* in the current directory, so first `cd` to wherever you want that folder to be, for example:  
 ```
-cd ~/astro_tools
+cd ~/pyradex_x86
 ```
 
-將別人的 repo clone 下來
-完全就是從k的github複製的，具體網址應該參考他，搞不好網址會變（之後馬上就要遇到相似這個問題辣！）
+Clone the repository.  
+This command is copied directly from keflavich’s repo, and you should always check the original repo in case the URL changes in the future.
 ```
 git clone --recursive https://github.com/keflavich/pyradex.git
 ```
 
-cd 進去`pyrdexx`那個資料夾，
-ls 的話裡面應有 `setup.py`, `install_radex.py` etc...
+After cloning, move **into** the directory.  
+If you run `ls`, you should see files like *setup.py*, *install_radex.py* etc...  
 ```
-cd ~/astro_tools/pyradex
+cd ~/pyradex_x86/pyradex
 ls
 ```
 
-依照指示跑跑這個 (python or pyhton3 depend on your computer setting) 
+Next, run the installation script as keflavich instructed.  
+(Use either `python` or ` python3`, depending on your computer setting.)   
 ```
+which python     # To cheack the python ur using
+which python3    # To cheack the python ur using
 python setup.py install_radex install_myradex install
 ```
 
-先執行看看，但應該會遇到第一個錯：
+Try to run it once first, but I guess you will almost certainly hit the first error:  
 ```
 ... fail to resolve ‘personal.sron.nl’
 ```
-具體修改請見`details`, 總之這邊可以使用補丁`install_radex.py`  
-直接貼到`~/astro_tools/pyradex` （或對應路徑）就可以了，取代原有檔案
 
+A more detailed explanation of why this happens can be found in *this-repo/patches/patch_ref.md*.  
+For now, you can just **replace** the original *install_radex.py* with the patched file of the same name.  
+```
+cp ~/Downloads/install_radex.py ~/pyradex_x86/pyradex
+```
 
-### 開始編譯
-換了新的install_radex.py(或您很幸運地沒遇到上個問題) do it again 
+### Compiling
+After replacing *install_radex.py* (or you are too lucky to have that issue), run the command again:  
 ```
 python setup.py install_radex install_myradex install
 ```
 
-than you may come into tons of message 爆破你的 terminal like:
+Than you may come into tons of message 爆破 your terminal, be like:  
 ```
 Found shared object files=[] for RADEX.  (if that is a blank, it means radex didn't install successfully)
 Found shared object files=[] for RADEX.  (if that is a blank, it means fjdu's myradex didn't install successfully)
@@ -123,33 +130,45 @@ Line #49 in radex.inc:" parameter(hplanck = 6.6260963d-27) " get_parameters: got
 Error sub_global_variables.f90:41:54:
 41 | double precision, parameter :: phy_NaN = transfer(X'FFFFFFFFFFFFFFFF', 0D0)  
 ```
-or something like that seems like nothing success hahapy  
+or something like that seems like nothing success, haha py  
 
-Here we got two problem, one is from`radex.inc` another is from`sub_global_variables.f90`  
-I am going to fix the `sub_global_variables.f90` one because it is an **Error**
-這個問題的詳細細節依然請見 `patch_ref.md` 簡單來說就是定義 null 的方式變了，新的編譯器不認識原本的寫法  
-在 `~/astro_tools/pyradex/myRadex` 放入補丁 `sub_global_variables.f90` and `sub_trivials.f90` 就可以解決
+Here we got two problem:  
+one is from *~/pyradex_x86/pyradex/Radex/src/radex.inc*, another is from *~/pyradex_x86/pyradex/myRaedx/sub_global_variables.f90*     
+I am going to fix the *sub_global_variables.f90* one first because it raises an actual **Error**.  
 
-再試一次
+The detailed explanation is again in *patch_ref.md*.
+In short, the method of defining a **null value** has changed, and newer compilers no longer accept the original syntax.
+
+Place the patched versions of *sub_global_variables.f90* and *sub_trivials.f90* into
+*~/pyradex_x86/pyradex/myRadex/* to fix this issue.
+```
+cp ~/Downloads/sub_global_variables.f90 ~/Downloads/sub_trivials.f90 ~/pyradex_x86/pyradex/myRadex
+```
+
+Try again:
 ```
 python setup.py install_radex install_myradex install
 ```
-
-應該可以看到
+You should now see something like:
 ```
 Found shared object files=['radex.so'] for RADEX. (if that is a blank, it means radex didn't install successfully)
 Found shared object files=[] for RADEX. (if that is a blank, it means fjdu's myradex didn't install successfully)
+...
 ```
-`radex` 成功了！恭喜一半！當`radex.so` 出現在[]之後，就可以在`~/astro_tools/pyradex/Radex/src`中放入補丁`radex.inc`  
-這個個改動詳見 `patch_ref.md`, 簡單來說就是指數符號新舊的差異  
-在使用了 補丁`radex.inc` 之後，安裝命令要從`python setup.py install_radex install_myradex install`改成
+`radex` has succeeded!! 非常之他媽恭喜!  
+Once *radex.so* appears in the [ ], you can place the patched *radex.inc* into *~/pyradex_x86/pyradex/Radex/src*.  
+The detailed explanation is again(2) in *patch_ref.md*. In short, the patch fixes differences in exponent notation between old and new compilers. Hate version issue:(  
+```
+cp ~/Downloads/radex.inc ~/pyradex_x86/pyradex/Radex/src
+```
+
+After importing the patched *radex.inc*, the installation command should be modified to:  
 ```
 python setup.py install_myradex install
 ```
-移除install_radex（避免覆寫.inc），所以必須等 radex 裝好之後（`radex.so` 出現）才使用這個補丁
+Remove the 「install_radex」 part to avoid overwriting *radex.inc*. That's why the *radex.inc* patch must be applied only after `radex` has been installed successfully (i.e., when `radex.so` appears).  
 
-跑了一次`python setup.py install_myradex install`之後  
-出現了一大桶新的 warning
+After running the installation command AGAIN, a new wave of warnings may appear, belike:  
 ```
 warning: linalg_nleq1.f:1513:21:
 1513 | CALL XERBLA('DGER ',INFO) | 1 Warning: Character length of actual argument shorter than of dummy argument 'srname' (5/6) at (1) 
@@ -162,22 +181,46 @@ warning: opkda1.f:1255:72:
 ...
 9499 | 2 RES, JAC, ADDA) | 1 Error: Type mismatch in argument 'iwk' at (1); passed REAL(8) to INTEGER(4) 
 ```
+The last two `type mismatch in argument ‘iwk’` messages are **errors** on macOS which will stop the compilation.  
+However, for reasons I still don’t understand (possibly related to the **version of gfortran?**), the Linux machine treats them only as warnings, and the compilation continues successfully.  
 
-這邊像要跟大家說的是，後兩個關於iwk的警告在 macOS 上會是錯誤！  
-但，因為一些我不懂的理由（或許是gfortran版本？） Linux machine上將這些視為警告、不影響編譯  
+SOOO:
+- on Mac: These errors will break the build. I feel like spending 127yrs on trying to fix them, but as mentioned before, I am *Lagenaria siceraria*, and I failed to install `pyradex` on macOS. @@  
+- on Linux: These warnings look scary but do not prevent the installation. ye  
 
-### Testing & Ensureeee
-當出現了
+It’s worth checking the related discussions under the `issues` section in keflavich’s repository.
+
+### Ensuring `pyradex` Can Works,
+or at least didn't obviously fail.  
+When you see the following messages in terminal:
 ```
 Found shared object files=['radex.so'] for RADEX.  (if that is a blank, it means radex didn't install successfully)
 Found shared object files=['wrapper_my_radex.cpython-310-x86_64-linux-gnu.so'] for RADEX.  (if that is a blank, it means fjdu's myradex didn't install successfully)
 ```
-這倆 `.so` 代表大成功  
-其他的測試可以使用 k 大提供的測試碼  
+These two `.so` files indicate a successful builddddddddddddd !!
+If both appear, congratulations, `radex` and `myRadex` have compiled correctly. And now `import pyradex` can be used in ur code!
+
+Little test: (ref: keflavich’s repo )
+```
+import pyradex
+import numpy as np
+datapath = '~/pyradex_x86/pyradex/pyradex_data' # mkdir first:)
+
+R = pyradex.Radex(collider_densities={'oH2':900,'pH2':100}, column=1e16, species='co', temperature=20, datapath=datapath)
+Tlvg = R(escapeProbGeom='lvg')
+Tslab = R(escapeProbGeom='slab')
+Tsphere = R(escapeProbGeom='sphere')
+Tlvg[:3].pprint()
+Tslab[:3].pprint()
+Tsphere[:3].pprint()
+```
+
+Any question is welcome and I'll try my best to help you (if I can)
 
 ## Appendix
-裝成功後的終端訊息，保留這個東西方便以後查查什麼東西的  
-隨便，並非什麼具有參考價值的東西  
+Terminal output after a successful installation.  
+Keep this here for reference in case I want to check something later.  
+Not necessarily of any scientific or technical value.
 ```
 Found shared object files=['radex.so'] for RADEX.  (if that is a blank, it means radex didn't install successfully)
 Found shared object files=['wrapper_my_radex.cpython-310-x86_64-linux-gnu.so'] for RADEX.  (if that is a blank, it means fjdu's myradex didn't install successfully)
