@@ -7,8 +7,8 @@ datapath = "/home/aqing/pyradex/pyradex_data/"
 
 # fake pixel arrayyyy
 temp = [10, 20, 40, 80]  # K
-dens = [1e3, 1e4, 1e5, 1e6] # cm^-3
-column = [1e13, 1e14, 1e15, 1e16] # cm^-2
+dens = [1e3, 1e4, 1e5, 1e6] # collider_densities, cm^-3
+column = [1e13, 1e14, 1e15, 1e16] # column density, cm^-2
 
 results = []
 for T, n, N in zip(temp, dens, column):
@@ -20,6 +20,7 @@ for T, n, N in zip(temp, dens, column):
         datapath=datapath
     )
     output = R()
+    print(output)
     results.append(output['T_B'][0])  # maybe brightness temp?
 
 
@@ -34,5 +35,5 @@ and the data structure of the object "R"
 and i have to make sure how zip() actually work
 
 (for next time ) i want to use the data from my fits
-pick out some pixels and di the "modeling" 
+pick out some pixels and do the "modeling" 
 '''
