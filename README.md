@@ -1,9 +1,7 @@
 # line-modeling_Circinus
 **⚠️ This repo mainly serves as a personal log of the research process and may contain contain many imperfect operations .**  
 >
-**👾 Current Progress:** Trying to figure out how the code actually works. It's killing me.
->  
-- 跪下來感謝在各大論壇間接或直接幫助我的大佬和 GenAI，人類(類人？)群星閃耀時...  
+**👾 Current Progress:** Turns out the reference code is written for RADEX rather than pyradex. Not sure how to feel about the two weeks spent setting things up…
 >
 ---
 ## Environment (2025.10.23)
@@ -21,7 +19,7 @@ Also due to I could only make `pyradex` works on Linux now. :(
 - modular CASA (via Rosetta2)
 - CARTA v5.0.0(feifei), v4(Lab)
 - python 3.10
-- `pyradex` (Lab)
+- `pyradex` (Lab) (?)
 - `numpy==1.26.2`
 - `astropy==6.4.1`
 - `matplotlib`
