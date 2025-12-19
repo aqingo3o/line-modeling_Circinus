@@ -1,7 +1,7 @@
 # line-modeling_Circinus
 **⚠️ This repo mainly serves as a personal log of the research process and may contain contain many imperfect operations .**  
 >
-**👾 Current Progress:** Turns out the reference code is written for RADEX rather than pyradex. Not sure how to feel about the two weeks spent setting things up…
+**👾 Current Progress:** Finals week or my final, stay turns;)
 >
 ---
 ## Environment (2025.10.23)
