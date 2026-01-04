@@ -9,9 +9,9 @@ This repo is organized as follows:
 ```
 .
 ├── docs/                     # Documentation, notes, and something human-facing
+│   └── pyradex_patches/      # Patches for pyradex installation.
 ├── envs/                     # Environment configuration files (.yml or something like that)
 ├── exp/                      # Test pipelines, and exploratory code
-├── patches/                  # Patches for pyraadex installation.
 ├── products/                 # Products. (if have :)
 ├── pyradex_at-first-sight/   # A bottle of shit, never use that.
 ├── scripts/                  # Usable scripts
