@@ -4,6 +4,22 @@
 **👾 Current Progress:** It's winter vacation, still staying at National Monkey University to work on my project. 
 >
 ---
+## Repository Structure
+This repo is organized as follows:
+```
+.
+├── docs/                     # Documentation, notes, and something human-facing
+├── envs/                     # Environment configuration files (.yml or something like that)
+├── exp/                      # Test pipelines, and exploratory code
+├── patches/                  # Patches for pyraadex installation.
+├── products/                 # Products. (if have :)
+├── pyradex_at-first-sight/   # A bottle of shit, never use that.
+├── scripts/                  # Usable scripts
+├── (src/)                    # (not yet)
+├── LICENSE                   # ok I know I write a piece of shit.
+└── README.md                 # YOU ARE HERE ;)
+```
+
 ## Environment (2025.12.27)
 **feifei:** macOS Sequoia 15.6.1, M3 chip (arm-64)  
 ..  
