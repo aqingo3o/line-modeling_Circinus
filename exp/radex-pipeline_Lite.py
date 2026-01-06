@@ -224,4 +224,42 @@ def runRADEX_m2(i, j, k, m, n):
     fileName = f'Tkin-{Tkin_fn}_nH2-{nH2_fn}_Nco-{Nco_fn}_X1213-{X1213[m]}_X1318-{X1318[n]}' # X**_fn 就直接寫了
     radexOut = os.system(f'radex < {dataPath}/input_{mole_2}/{fileName}.inp')
     return radexOut
+
+# def radexFlux():
+# 不知道這是幹啥的
+def radex_flux(i,j,k,m,n):
+    # 檔名這邊和前面一樣
+    Tkin_coe_here = Tkin_coe[i%num_Tkin_coe]
+    Tkin_exp_here = i//num_Tkin_coe + int(Tkin_exp[0])
+    nH2_coe_here  = Nco_coe[j%num_Nco_coe]
+    nH2_exp_here  = j//num_Nco_coe + int(nH2_exp[0])
+    Nco_coe_here  = Nco_coe[k%num_Nco_coe]
+    Nco_exp_here  = k//num_Nco_coe + int(Nco_exp[0])
+    # _fn for fileName
+    Tkin_fn = f'{round(Tkin_coe_here, round_Tkin)}e{round(Tkin_exp_here, round_Tkin)}'
+    nH2_fn  = f'{round(nH2_coe_here, round_Nco)}e{nH2_exp_here}' 
+    Nco_fn  = f'{round(Nco_coe_here, round_Nco)}e{Nco_exp_here}'
+
+    fileName_0 = f'Tkin-{Tkin_fn}_nH2-{nH2_fn}_Nco-{Nco_fn}'
+    outfile_0 = f'{dataPath}/output_{mole_0}/{fileName_0}.out'
+    outfile_1 = f'{dataPath}/output_{mole_1}/{fileName_0}_X1213-{X1213[m]}.out'
+    outfile_2 = f'{dataPath}/output_{mole_2}/{fileName_0}_X1213-{X1213[m]}_X1318-{X1318[n]}.out'
     
+    # Extract reliable flux predictions (avoid those with convergence issues)
+    # 以下全部都不知道在做什麼
+    if np.loadtxt(outfile_0,skiprows=10, max_rows=1, dtype='str')[3] == '****':
+        flux_0 = np.full((3,), np.nan)
+    else:
+        flux_0 = np.genfromtxt(outfile_0, skip_header=13)[:, 11]
+
+    if np.loadtxt(outfile_1,skiprows=10, max_rows=1, dtype='str')[3] == '****':
+        flux_1 = np.full((3,), np.nan)
+    else:    
+        flux_1 = np.genfromtxt(outfile_1, skip_header=13)[:, 11]
+
+    if np.loadtxt(outfile_2,skiprows=10, max_rows=1, dtype='str')[3] == '****':
+        flux_2 = np.full((3,), np.nan)
+    else:    
+        flux_2 = np.genfromtxt(outfile_2, skip_header=13)[:, 11]
+    
+    return k, i, j, m, n, flux_0, flux_1, flux_2
