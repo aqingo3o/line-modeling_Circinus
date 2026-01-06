@@ -263,3 +263,30 @@ def radex_flux(i,j,k,m,n):
         flux_2 = np.genfromtxt(outfile_2, skip_header=13)[:, 11]
     
     return k, i, j, m, n, flux_0, flux_1, flux_2
+
+# Use the functions
+# 我就是要把它展開來寫啊
+print('Writing .inp files...')
+Parallel(n_jobs=cores)(
+    delayed(writeInput_m0)(i, j, k)
+    for k in range(num_Nco_exp)
+    for j in range(num_nH2_exp)
+    for i in range(num_Tkin_exp)
+    )
+Parallel(n_jobs=cores)(
+    delayed(writeInput_m1)(i, j, k, m)
+    for m in range(0, num_X1213)
+    for k in range(num_Nco_exp)
+    for j in range(num_nH2_exp)
+    for i in range(num_Tkin_exp)
+    )
+Parallel(n_jobs=cores)(
+    delayed(writeInput_m2)(i, j, k, m, n)
+    for n in range(0, num_X1318)
+    for m in range(0, num_X1213)
+    for k in range(num_Nco_exp)
+    for j in range(num_nH2_exp)
+    for i in range(num_Tkin_exp)
+    )
+writeInp_time = time.time()
+print(f'It took {(writeInp_time - start_time):.5f} seconds to write all .inp files.')
