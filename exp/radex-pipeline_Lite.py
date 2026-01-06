@@ -167,3 +167,61 @@ def writeInput_m2(i, j, k, m, n): # for (i, j, k, m, n) in range (num_Tkin, num_
     file.write('0\n')
     file.close() # aftercare
 
+# def runRADEX_m*():
+'''
+這邊依然是製作檔名, 因為是要調用所以可預期的, 
+檔名必須與 writeInput() 系列一致
+
+我在想說為什麼不能就把 runRADEX_m*() 和 writeInput() 寫在一起...?
+因為要進行平行處理嗎？
+'''
+def runRADEX_m0(i, j, k):
+    # _coe_here & _exp_here, 用 _here 是因為有些名字已經被佔用了, 避免分歧啦
+    Tkin_coe_here = Tkin_coe[i%num_Tkin_coe]
+    Tkin_exp_here = i//num_Tkin_coe + int(Tkin_exp[0])
+    nH2_coe_here  = Nco_coe[j%num_Nco_coe]
+    nH2_exp_here  = j//num_Nco_coe + int(nH2_exp[0])
+    Nco_coe_here  = Nco_coe[k%num_Nco_coe]
+    Nco_exp_here  = k//num_Nco_coe + int(Nco_exp[0])
+    # _fn for fileName, spaces for beauty :)
+    Tkin_fn = f'{round(Tkin_coe_here, round_Tkin)}e{round(Tkin_exp_here, round_Tkin)}'
+    nH2_fn  = f'{round(nH2_coe_here, round_Nco)}e{nH2_exp_here}' 
+    Nco_fn  = f'{round(Nco_coe_here, round_Nco)}e{Nco_exp_here}'
+    fileName = f'Tkin-{Tkin_fn}_nH2-{nH2_fn}_Nco-{Nco_fn}'
+
+    radexOut = os.system(f'radex < {dataPath}/input_{mole_0}/{fileName}.inp')
+    return radexOut
+
+def runRADEX_m1(i, j, k, m):
+    # _coe_here & _exp_here
+    Tkin_coe_here = Tkin_coe[i%num_Tkin_coe]
+    Tkin_exp_here = i//num_Tkin_coe + int(Tkin_exp[0])
+    nH2_coe_here  = Nco_coe[j%num_Nco_coe]
+    nH2_exp_here  = j//num_Nco_coe + int(nH2_exp[0])
+    Nco_coe_here  = Nco_coe[k%num_Nco_coe]
+    Nco_exp_here  = k//num_Nco_coe + int(Nco_exp[0])
+    # _fn for fileName
+    Tkin_fn = f'{round(Tkin_coe_here, round_Tkin)}e{round(Tkin_exp_here, round_Tkin)}'
+    nH2_fn  = f'{round(nH2_coe_here, round_Nco)}e{nH2_exp_here}' 
+    Nco_fn  = f'{round(Nco_coe_here, round_Nco)}e{Nco_exp_here}'
+    fileName = f'Tkin-{Tkin_fn}_nH2-{nH2_fn}_Nco-{Nco_fn}_X1213-{X1213[m]}' # X1213_fn 就直接寫了
+    radexOut = os.system(f'radex < {dataPath}/input_{mole_1}/{fileName}.inp')
+    return radexOut
+
+
+def runRADEX_m2(i, j, k, m, n):
+    # _coe_here & _exp_here
+    Tkin_coe_here = Tkin_coe[i%num_Tkin_coe]
+    Tkin_exp_here = i//num_Tkin_coe + int(Tkin_exp[0])
+    nH2_coe_here  = Nco_coe[j%num_Nco_coe]
+    nH2_exp_here  = j//num_Nco_coe + int(nH2_exp[0])
+    Nco_coe_here  = Nco_coe[k%num_Nco_coe]
+    Nco_exp_here  = k//num_Nco_coe + int(Nco_exp[0])
+    # _fn for fileName
+    Tkin_fn = f'{round(Tkin_coe_here, round_Tkin)}e{round(Tkin_exp_here, round_Tkin)}'
+    nH2_fn  = f'{round(nH2_coe_here, round_Nco)}e{nH2_exp_here}' 
+    Nco_fn  = f'{round(Nco_coe_here, round_Nco)}e{Nco_exp_here}'
+    fileName = f'Tkin-{Tkin_fn}_nH2-{nH2_fn}_Nco-{Nco_fn}_X1213-{X1213[m]}_X1318-{X1318[n]}' # X**_fn 就直接寫了
+    radexOut = os.system(f'radex < {dataPath}/input_{mole_2}/{fileName}.inp')
+    return radexOut
+    
