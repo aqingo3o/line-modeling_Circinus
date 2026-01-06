@@ -17,7 +17,7 @@ start_time = time.time()
 
 # Path
 projectRoot = Path(__file__).resolve().parents[1] # .../line-modeling_Circinus, no slash at the end
-dataPath = f'{projectRoot}/data/radex_io/'
+dataPath = f'{projectRoot}/data/radex_io'
 
 # Variable
 cores = 20 # number of threads to use for multi-processing
