@@ -10,7 +10,7 @@ This script is intended to serve as a smaller-scale workflow version of `radex_p
 import numpy as np
 import os
 import time
-#from joblib import Parallel, delayed
+from joblib import Parallel, delayed
 from pathlib import Path # for finding file, path
 
 start_time = time.time()
@@ -18,25 +18,20 @@ start_time = time.time()
 # Path
 projectRoot = Path(__file__).resolve().parents[1] # .../line-modeling_Circinus, no slash at the end
 dataPath = f'{projectRoot}/data/radex_io'
+productPath = f'{projectRoot}/products/from_radex-pipeline'
 
 # Variable
 cores = 20 # number of threads to use for multi-processing
 linewidth = 15 # km/s
-molecule = ['co', '13co', 'c18o'] # 冷知識: molecule是名詞, molecular是形容詞
-'''
-我提出的問題是
-Eltha 是事先知道他要用那六種線進行建模，所以才這麼寫的
-那我他媽現在還不知道我有沒有這麼多線，我還要這樣寫嗎？
-'''
-
-mole_1 = 'co' 
-'''
+mole_0 = 'co'
+mole_1 = '13co'
+mole_2 = 'c18o'
+'''# 冷知識: molecule是名詞, molecular是形容詞
 小寫因為 mole_1 之後會寫到 .inp file裡面
 第一行會呼叫要使用的 .dat file
 需要一些統一的檔名
 mole_n 和 molecule(list) 應該是互相可取代的關係
 先寫一個簡單的，反正能跑再說
-處理環境相依問題真的是最白癡的吧
 '''
 
 # Physical Conditions Grid
@@ -53,10 +48,13 @@ round_Nco, round_Tkin = 1, 1  # 取的小數位數, 好像是 show in file name 
 Nco_coe = np.round(10**np.arange(0., 1., step_Nco_exp))   # columnDensity: A*10^B, A:*_coe; B:*_exp
 Tkin_coe = np.round(10**np.arange(0., 1., step_Tkin_exp))
 
+X1213_inv = 1. / X1213 # 真的不知道為什麽會有倒數
+X1318_inv = 1. / X1318
+
 num_Nco_exp = Nco_exp.shape[0] # len() works, too
 num_Nco_coe = len(Nco_coe)
 num_Tkin_exp = len(Tkin_exp)   # 並不確定這些是不是有要裝進變數的必要...
-num_Tkin_coe = len(Tkin_coe)
+num_Tkin_coe = len(Tkin_coe)   # num_系列是跑回圈的時候會用到吧
 num_nH2_exp = len(nH2_exp)
 num_X1213 = len(X1213)
 num_X1318 = len(X1318)
@@ -71,7 +69,7 @@ Eltha 使用了聰明人才看得懂的超複雜引數，
 但是檔名要用迴圈所以會有一堆str, 
 不過個人偏向於使用 f-string
 
-參考 make-a-inp.py 裡的 .inp file 格式可能就不會有那麼多欸幹這是三小
+參考 make-a-inp.py 裡的 .inp file 格式
 '''
 def writeInput_m0(i, j, k): # for (i, j, k) in range (num_Tkin, num_nH2, num_Nco)
     # _coe_here & _exp_here, 用 _here 是因為有些名字已經被佔用了, 避免分歧啦
@@ -175,7 +173,7 @@ def writeInput_m2(i, j, k, m, n): # for (i, j, k, m, n) in range (num_Tkin, num_
 我在想說為什麼不能就把 runRADEX_m*() 和 writeInput() 寫在一起...?
 因為要進行平行處理嗎？
 '''
-def runRADEX_m0(i, j, k):
+def runRADEX_m0(i, j, k): # for (i, j, k) in range (num_Tkin, num_nH2, num_Nco)
     # _coe_here & _exp_here, 用 _here 是因為有些名字已經被佔用了, 避免分歧啦
     Tkin_coe_here = Tkin_coe[i%num_Tkin_coe]
     Tkin_exp_here = i//num_Tkin_coe + int(Tkin_exp[0])
@@ -192,7 +190,7 @@ def runRADEX_m0(i, j, k):
     radexOut = os.system(f'radex < {dataPath}/input_{mole_0}/{fileName}.inp')
     return radexOut
 
-def runRADEX_m1(i, j, k, m):
+def runRADEX_m1(i, j, k, m): # for (i, j, k, m) in range (num_Tkin, num_nH2, num_Nco, num_X1213)
     # _coe_here & _exp_here
     Tkin_coe_here = Tkin_coe[i%num_Tkin_coe]
     Tkin_exp_here = i//num_Tkin_coe + int(Tkin_exp[0])
@@ -208,8 +206,7 @@ def runRADEX_m1(i, j, k, m):
     radexOut = os.system(f'radex < {dataPath}/input_{mole_1}/{fileName}.inp')
     return radexOut
 
-
-def runRADEX_m2(i, j, k, m, n):
+def runRADEX_m2(i, j, k, m, n): # for (i, j, k, m, n) in range (num_Tkin, num_nH2, num_Nco, num_X1213, num_X1318)
     # _coe_here & _exp_here
     Tkin_coe_here = Tkin_coe[i%num_Tkin_coe]
     Tkin_exp_here = i//num_Tkin_coe + int(Tkin_exp[0])
@@ -264,7 +261,7 @@ def radex_flux(i,j,k,m,n):
     
     return k, i, j, m, n, flux_0, flux_1, flux_2
 
-# Use the functions
+# Use the functions_writeInput_m*()
 # 我就是要把它展開來寫啊
 print('Writing .inp files...')
 Parallel(n_jobs=cores)(
@@ -289,4 +286,95 @@ Parallel(n_jobs=cores)(
     for i in range(num_Tkin_exp)
     )
 writeInp_time = time.time()
-print(f'It took {(writeInp_time - start_time):.5f} seconds to write all .inp files.')
+print(f'It took {(writeInp_time - start_time):.5f} seconds to write all .inp files.') # 519
+
+# Use the functions_------ wi verbose
+print('Running RADEX with .inp files...')
+Parallel(n_jobs=cores, verbose=5)(
+    delayed(runRADEX_m0)(i, j, k)
+    for k in range(num_Nco_exp)
+    for j in range(num_nH2_exp)
+    for i in range(num_Tkin_exp)
+    )
+Parallel(n_jobs=cores, verbose=5)(
+    delayed(runRADEX_m1)(i, j, k, m)
+    for m in range(0, num_X1213)
+    for k in range(num_Nco_exp)
+    for j in range(num_nH2_exp)
+    for i in range(num_Tkin_exp)
+    )
+Parallel(n_jobs=cores, verbose=5)(
+    delayed(runRADEX_m2)(i, j, k, m, n)
+    for n in range(0, num_X1318)
+    for m in range(0, num_X1213)
+    for k in range(num_Nco_exp)
+    for j in range(num_nH2_exp)
+    for i in range(num_Tkin_exp)
+    )
+runRadex_time = time.time() 
+print(f'It took {(runRadex_time - writeInp_time):.5f} seconds to finish running RADEX.')
+
+# ---------------------------- IDK why she do that ------------------------------ #
+# Construct 3D - 5D flux models
+flux_results = Parallel(n_jobs=cores)(
+    delayed(radex_flux)(i,j,k,m,n)    
+    for n in range(0, num_X1318)
+    for m in range(0, num_X1213)
+    for k in range(num_Nco_exp)
+    for j in range(num_nH2_exp)
+    for i in range(num_Tkin_exp)
+)
+
+flux_co_10 =  np.full((num_Nco_exp, num_Tkin_exp, num_nH2_exp), np.nan)
+flux_co_21 = np.full((num_Nco_exp, num_Tkin_exp, num_nH2_exp), np.nan)
+flux_13co_21 = np.full((num_Nco_exp, num_Tkin_exp, num_nH2_exp, num_X1213), np.nan)
+flux_13co_32 = np.full((num_Nco_exp, num_Tkin_exp, num_nH2_exp, num_X1213), np.nan)
+flux_c18o_21 = np.full((num_Nco_exp, num_Tkin_exp, num_nH2_exp, num_X1213,num_X1318), np.nan)
+flux_c18o_32 = np.full((num_Nco_exp, num_Tkin_exp, num_nH2_exp, num_X1213,num_X1318), np.nan)
+
+for result in flux_results:
+    k, i, j, m, n, flux_0, flux_1, flux_2 = result
+    flux_co_10[k,i,j] = flux_0[0]
+    flux_co_21[k,i,j] = flux_0[1]
+    flux_13co_21[k,i,j,m] = flux_1[0]
+    flux_13co_32[k,i,j,m] = flux_1[1]
+    flux_c18o_21[k,i,j,m,n] = flux_2[0]
+    flux_c18o_32[k,i,j,m,n] = flux_2[1]
+
+# Save Flux files: {projectRoot}/products/from_radex-pipeline/flux_{mole}-{transition}.npy
+np.save(f'{productPath}/flux_co-10.npy', flux_co_10)
+np.save(f'{productPath}/flux_co-21.npy', flux_co_21)
+np.save(f'{productPath}/flux_13co-21.npy', flux_13co_21)
+np.save(f'{productPath}/flux_13co-32.npy', flux_13co_32)
+np.save(f'{productPath}/flux_c18o-21.npy', flux_c18o_21)
+np.save(f'{productPath}/flux_c18o-32.npy', flux_c18o_32) 
+
+# Construct 5D ratio models
+temp = np.repeat(flux_co_21[:, :, :, np.newaxis], num_X1213, axis=3)
+co21_5d = np.repeat(temp[:, :, :, :, np.newaxis], num_X1318, axis=4)
+temp2 = np.repeat(flux_co_10[:, :, :, np.newaxis], num_X1213, axis=3)
+co10_5d = np.repeat(temp2[:, :, :, :, np.newaxis], num_X1318, axis=4)
+c13o_21_5d = np.repeat(flux_13co_21[:, :, :, :, np.newaxis], num_X1318, axis=4)
+c13o_32_5d = np.repeat(flux_13co_32[:, :, :, :, np.newaxis], num_X1318, axis=4) 
+
+# 變數命名裡莫名其妙的 2 原來是 to 的意思
+ratio_co           = co21_5d      / co10_5d
+ratio_13co         = c13o_32_5d   / c13o_21_5d
+ratio_c18o         = flux_c18o_32 / flux_c18o_21
+ratio_co213co      = co21_5d      / c13o_21_5d
+ratio_co2c18o      = co21_5d      / flux_c18o_21
+ratio_13co2c18o_21 = c13o_21_5d   / flux_c18o_21
+ratio_13co2c18o_32 = c13o_32_5d   / flux_c18o_32
+
+# Save Ratio files: {projectRoot}/products/from_radex-pipeline/ratio_{mole-a}-{a-transi}_over_{mole-b}-{b-transi}.npy
+np.save(f'{productPath}/ratio_co-21_over_co_10.npy',     ratio_co)
+np.save(f'{productPath}/ratio_13co-32-to-21.npy',        ratio_13co)
+np.save(f'{productPath}/ratio_c18o-32_over_c18o-21.npy', ratio_c18o)
+np.save(f'{productPath}/ratio_co-21_over_c13o-21.npy',   ratio_co213co)
+np.save(f'{productPath}/ratio_co-21_over_c18o-21.npy',   ratio_co2c18o)
+np.save(f'{productPath}/ratio_13co-21_over_c18o-21.npy', ratio_13co2c18o_21)
+np.save(f'{productPath}/ratio_13co-32_over_c18o-32.npy', ratio_13co2c18o_32)
+print('Ratio models saved.')
+
+endall_time = time.time()
+print(f'It took {(endall_time - start_time):.5f} seconds to do all above.')
