@@ -8,6 +8,7 @@
 This repo is organized as follows:
 ```
 .
+├── data/                     # .dat files used in RADEX
 ├── docs/                     # Documentation, notes, and something human-facing
 │   └── pyradex_patches/      # Patches for pyradex installation.
 ├── envs/                     # Environment configuration files (.yml or something like that)
@@ -26,4 +27,5 @@ This repo is organized as follows:
 
 **Lab computer:** Ubuntu20.04  
 Model fitting requires computational powerrrr, so I perform those tasks on desktop.  
+(But I think writing .inp files on feifei is much faster?)
 Thought I may not use `pyradex` for modeling, I still need to mention that I could only make `pyradex` works on Linux now. :(  
