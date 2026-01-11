@@ -1,7 +1,7 @@
 # line-modeling_Circinus
 **⚠️ This repo mainly serves as a personal log of the research process and may contain contain many imperfect operations .**  
 >
-**👾 Current Progress:** It's winter vacation, still staying at National Monkey University to work on my project. 
+**👾 Current Progress:** I've tried src/radex-pipeline_*.py, some failed and some is still running... 
 >
 ---
 ## Repository Structure
