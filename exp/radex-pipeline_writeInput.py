@@ -1,8 +1,10 @@
 '''radex-pipeline_writeInput.py
 This script is intended to serve as a smaller-scale workflow version of `radex_pipeline.py`, from Eltha.
 
-準確來說是我改過的 radex-pipeline_lite.py 的前半部分
-因為一次全部跑完的話有點懸，所以就分成兩部分了。
+準確來說是我改過的 radex-pipeline_lite.py 的前1/3部分
+因為一次全部跑完的話有點懸, 所以就分成三部分了。
+
+已經跑過了, 似乎沒什麼問題?
 '''
 # Module
 import numpy as np
