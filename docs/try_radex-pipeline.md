@@ -62,4 +62,40 @@ ls | wc -l
 這是唯一可以想到的不同了。 
 
 ## 13co.dat ?
-我覺得是喔
+我覺得是，這是在大電腦上跑的結果  
+co 就跑得出來, 13co 就不行  
+所以一定是 `13co.dat` 的問題！  
+```
+(eltha_py310) aqing@megamaser3-Precision-3650-Tower:~/Documents/line-modeling_Circinus/exp$ radex
+
+    Welcome to Radex, version of 30nov2011          
+
+Molecular data file ? co.dat
+Name of output file ? ee.out
+Minimum and maximum output frequency [GHz] ? 50 500
+Kinetic temperature [K] ?  20
+Number of collision partners ?  1
+Type of partner 1 ? H2
+Density of collision partner  1 [cm^-3] ? 1e4
+Background temperature [K] ?  2,73
+Molecular column density [cm^-2] ?  1e13
+Line width [km/s] ?  15
+ Starting calculations ...
+ *** Warning: Assuming thermal o/p ratio for H2 of    1.7770941869968250E-003
+ Finished in           10  iterations.
+  Another calculation [0/1] ? 1
+Molecular data file ? 13co.dat
+Name of output file ? ee2.out
+Minimum and maximum output frequency [GHz] ? 40 100
+Kinetic temperature [K] ?  20
+Number of collision partners ?  1
+Type of partner 1 ? H2
+Density of collision partner  1 [cm^-3] ? 1e4
+Background temperature [K] ?  2.73
+Molecular column density [cm^-2] ?  1e16
+Line width [km/s] ?  15
+ Starting calculations ...
+ *** Warning: No rates found for any collision partner
+Note: The following floating-point exceptions are signalling: IEEE_INVALID_FLAG
+```
+
