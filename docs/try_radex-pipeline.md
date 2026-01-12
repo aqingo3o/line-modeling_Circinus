@@ -61,10 +61,12 @@ ls | wc -l
 如果只有 13co 出事的話，那應該就是因為 `13co.dat` 是我自己從 [EMAA](https://emaa.osug.fr) 抓的，下載的時候後綴是 .radex, not .dat  
 這是唯一可以想到的不同了。 
 
-## 13co.dat ?
-我覺得是，這是在大電腦上跑的結果  
+## Problem
+將會分點紀錄跑 `radex-pipeline_*.py` 系列的問題。就當成可悲的紀錄再看就好了。
+
+### 13co.dat ?
+我覺得是 `13co.dat` 的問題，這是在大電腦上跑的結果  
 co 就跑得出來, 13co 就不行  
-所以一定是 `13co.dat` 的問題！  
 ```
 (eltha_py310) aqing@megamaser3-Precision-3650-Tower:~/Documents/line-modeling_Circinus/exp$ radex
 
@@ -107,5 +109,12 @@ Note: The following floating-point exceptions are signalling: IEEE_INVALID_FLAG
 2 CO-pH2 from Yang et al. (2010)
 ```
 pH2 應該是 para-H2 的意思？  
-是因為這個原因嗎？  
-還在研究
+是因為這個原因嗎？ 還在研究  
+
+研究回來了！就是因為我的 `13co.dat` 是從 EMAA 下載的，他的格式就是不太對啦屁眼。  
+參考 [where-to-get-dat.md](where-to-get-dat.md), 請從 LAMDA 下載格式符合 RADEX 的 .dat files :)  
+feifei 用了 8000 秒完成了 `radex-pipeline_runRadex.py`  
+output_13co/, output_c18o/ 的檔名都他媽很怪，我覺得是檔名超過一定長度之後就會他媽很怪。 
+就像這樣：`Tkin-1.0e1_nH2-1.0e3_Nco-1.0e17_X1213-90_X1`，後面直接斷掉是三小啦。
+難怪 Eltha 女士要使用不明確的檔名。  
+好欸，果然什麼事都有他的原因。
