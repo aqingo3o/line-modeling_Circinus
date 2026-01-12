@@ -98,4 +98,14 @@ Line width [km/s] ?  15
  *** Warning: No rates found for any collision partner
 Note: The following floating-point exceptions are signalling: IEEE_INVALID_FLAG
 ```
-
+觀察其他已知正確（？）的 .dat files (co.dat and c18o.dat)  
+在描述碰撞夥伴的時候都有這幾句  
+```
+!NUMBER OF COLL PARTNERS
+2
+!COLLISIONS BETWEEN
+2 CO-pH2 from Yang et al. (2010)
+```
+pH2 應該是 para-H2 的意思？  
+是因為這個原因嗎？  
+還在研究
