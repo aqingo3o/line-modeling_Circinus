@@ -12,8 +12,8 @@ projectRoot = Path(__file__).resolve().parents[1]
 dataPath = f'{projectRoot}/data/radex_io'
 productPath = f'{projectRoot}/products'
 
-under_radex_io = ['input_5d-coarse_co', 'input_5d-coarse_13co', 'input_5d-coarse_c18o', 
-                  'output_5d-coarse_co', 'output_5d-coarse_13co', 'output_5d-coarse_18co']
+under_radex_io = ['input_5d-coarse2_co', 'input_5d-coarse2_13co', 'input_5d-coarse2_c18o', 
+                  'output_5d-coarse2_co', 'output_5d-coarse2_13co', 'output_5d-coarse2_c18o']
 under_products = ['from_radex-pipeline']
 
 print('Start building suitable folder structure...')
