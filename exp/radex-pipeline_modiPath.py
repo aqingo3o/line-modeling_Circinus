@@ -1,67 +1,76 @@
 '''# radex-pipeline_modiPath.py
-因為真的不知道我的路徑哪裡寫錯了，為什麽會有檔案存不進去的情況啊？還是是平行處理的問題？  
-總之，在我抓錯的過程中我決定先跑跑看 Eltha 女士的碼 (這是bayes那repo的)
-因為有些路徑的關係，所以還是先進一個檔案了
-這邊只有修改路徑，所以應該只有在 Linus machine 上面跑（因為那邊我有建立資料夾）
+因為真的不知道我的路徑哪裡寫錯了，為什麽會有檔案存不進去的情況啊？還是是平行處理的問題？
+總之，在我抓錯的過程中我決定先跑跑看 Eltha 女士的碼 (這是ngc3351那repo的)
+因為有些路徑的關係，所以還是先建一個檔案了
+這邊主要的大改是修改檔案存放的路徑，需要先準備好的資料夾如同 #Path 下方註解。
+
+小小的改動是:
+- 展開迴圈的縮排
+- flux, ratio 的檔名
+- 顯示所需時間的 formating (無關緊要的語法)
+- 把時間寫成檔案，唯一新東西
 '''
 
-import os
+# Module
 import numpy as np
-from joblib import Parallel, delayed
+import os
 import time
-
-'''See README.md for information'''
+from joblib import Parallel, delayed
+from pathlib import Path
 
 start_time = time.time()
 
 # Path
-from pathlib import Path
 projectRoot = Path(__file__).resolve().parents[1] # .../line-modeling_Circinus, no slash at the end
 dataPath = f'{projectRoot}/data/radex_io'
 productPath = f'{projectRoot}/products'
-'''Folder ask to be exist:
-{dataPath}/input_5d_coarse_co
-{dataPath}/input_5d_coarse_13co
-{dataPath}/input_5d_coarse_c18o
-{dataPath}/output_5d_coarse_co
-{dataPath}/output_5d_coarse_13co
-{dataPath}/output_5d_coarse_c18o
+model = '5d_coarse'
+sou_model = 'from_radex-pipeline/' # modi by qing (20260113), filename of flux&&ratio model
+'''# Folders need to be exist:
+line-modeling_Circinus/data/radex_io/input_5d_coarse_co/
+line-modeling_Circinus/data/radex_io/input_5d_coarse_13co/
+line-modeling_Circinus/data/radex_io/input_5d_coarse_c18o/
+line-modeling_Circinus/data/radex_io/output_5d_coarse_co/
+line-modeling_Circinus/data/radex_io/output_5d_coarse_13co/
+line-modeling_Circinus/data/radex_io/output_5d_coarse_c18o/
+
+line-modeling_Circinus/products/from_radex-pipeline/
 '''
 
-# Parameter Settings
+# Variable
+num_cores = 20 # joblib
+linewidth = 15 # km/s
+
 molecule_0 = 'co'
 molecule_1 = '13co'
 molecule_2 = 'c18o'
-model = '5d_coarse'
 
-sou_model = 'radex_model/'
-num_cores = 20
-
-linewidth = 15
+# Physical Conditions Grid
 Nco = np.arange(16.,21.1,0.2)
 Tkin = np.arange(1.,2.4,0.1)
-nH2 = np.arange(2.,5.1,0.2)
+nH2 = np.arange(2.,5.1,0.2) # step size for Nco and nH2 should be the same
 X_13co = np.arange(10,205,10)
 X_c18o = np.arange(2,21,1.5)
+incr_dens = round(Nco[1] - Nco[0],1)
+incr_temp = round(Tkin[1] - Tkin[0],1)
+diff_Tk = Tkin[1] - Tkin[0]
 round_dens = 1
 round_temp = 1
 
 # Pre-processing
-incr_dens = round(Nco[1] - Nco[0],1)
-incr_temp = round(Tkin[1] - Tkin[0],1)
 co_dex = np.round(10**np.arange(0.,1.,incr_dens), 4)
 Tk_dex = np.round(10**np.arange(0.,1.,incr_temp), 4)
+factors_13co = 1./X_13co
+factors_c18o = 1./X_c18o
 num_Nco = Nco.shape[0]
 num_Tk = Tkin.shape[0]
 num_nH2 = nH2.shape[0]
-factors_13co = 1./X_13co  
-factors_c18o = 1./X_c18o
 cycle_dens = co_dex.shape[0]
 cycle_temp = Tk_dex.shape[0]
 num_X12to13 = X_13co.shape[0]
 num_X13to18 = X_c18o.shape[0]
-diff_Tk = Tkin[1] - Tkin[0]
 
+# def write_inputs_m*():
 def write_inputs_m0(i,j,k):
     powi = str(i//cycle_temp + int(Tkin[0]))
     Tk = str(round(diff_Tk*i + int(Tkin[0]), round_temp))
@@ -146,6 +155,7 @@ def write_inputs_m2(i,j,k,m,n):
     file.write('0\n')
     file.close()   
 
+# def run_rADEX_m*():
 def run_radex_m0(i,j,k):
     powj = j//cycle_dens + int(nH2[0])
     Tk = str(round(diff_Tk*i + int(Tkin[0]), round_temp))
@@ -165,7 +175,7 @@ def run_radex_m1(i,j,k,m):
     
     prej_r = str(round(co_dex[j%cycle_dens], round_dens))
     x13co = str(X_13co[m])
-    codex = str(round(co_dex[k%cycle_dens], round_dens)) 
+    codex = str(round(co_dex[k%cycle_dens], round_dens))
     run = os.system('radex < '+dataPath+'/input_'+model+'_'+molecule_1+'/'+Tk+'_'+prej_r+'e'+n_h2+'_'+codex+'e'+N_co+'_'+x13co+'.inp')
     return run
 
@@ -175,20 +185,21 @@ def run_radex_m2(i,j,k,m,n):
     n_h2 = str(powj)
     N_co = str(k//cycle_dens + int(Nco[0]))
     
-    prej_r = str(round(co_dex[j%cycle_dens], round_dens))    
+    prej_r = str(round(co_dex[j%cycle_dens], round_dens))
     x13co = str(X_13co[m])
     xc18o = str(X_c18o[n])
-    codex = str(round(co_dex[k%cycle_dens], round_dens))  
+    codex = str(round(co_dex[k%cycle_dens], round_dens))
     run = os.system('radex < '+dataPath+'/input_'+model+'_'+molecule_2+'/'+Tk+'_'+prej_r+'e'+n_h2+'_'+codex+'e'+N_co+'_'+x13co+'_'+xc18o+'.inp')
     return run
 
+# def radex_flux():
 def radex_flux(i,j,k,m,n):
     powj = j//cycle_dens + int(nH2[0])
     Tk = str(round(diff_Tk*i + int(Tkin[0]), round_temp))
     n_h2 = str(powj)
     N_co = str(k//cycle_dens + int(Nco[0]))
     
-    prej_r = str(round(co_dex[j%cycle_dens], round_dens))   
+    prej_r = str(round(co_dex[j%cycle_dens], round_dens))
     x13co = str(X_13co[m])
     xc18o = str(X_c18o[n])
     codex = str(round(co_dex[k%cycle_dens], round_dens))
@@ -198,31 +209,73 @@ def radex_flux(i,j,k,m,n):
     flux_2 = np.genfromtxt(dataPath+'/output_'+model+'_'+molecule_2+'/'+Tk+'_'+prej_r+'e'+n_h2+'_'+codex+'e'+N_co+'_'+x13co+'_'+xc18o+'.out', skip_header=13)[:,11]
 
     return k,i,j,m,n,flux_0,flux_1,flux_2
- 
- 
-# Run input files for molecules 0,1,2    
-Parallel(n_jobs=num_cores)(delayed(write_inputs_m0)(i,j,k) for k in range(num_Nco) for j in range(num_nH2) for i in range(num_Tk))              
-Parallel(n_jobs=num_cores)(delayed(write_inputs_m1)(i,j,k,m) for m in range(0,num_X12to13) for k in range(num_Nco) for j in range(num_nH2) for i in range(num_Tk))
-Parallel(n_jobs=num_cores)(delayed(write_inputs_m2)(i,j,k,m,n) for n in range(0,num_X13to18) for m in range(0,num_X12to13) for k in range(num_Nco) for j in range(num_nH2) for i in range(num_Tk))
+
+# Use the functions write_inputs_m*() for molecules0,1,2
+print('Start to writing .inp files...')
+Parallel(n_jobs=num_cores)(
+    delayed(write_inputs_m0)(i,j,k)
+    for k in range(num_Nco)
+    for j in range(num_nH2)
+    for i in range(num_Tk)
+    )              
+Parallel(n_jobs=num_cores)(
+    delayed(write_inputs_m1)(i,j,k,m)
+    for m in range(0,num_X12to13)
+    for k in range(num_Nco)
+    for j in range(num_nH2)
+    for i in range(num_Tk)
+    )
+Parallel(n_jobs=num_cores)(
+    delayed(write_inputs_m2)(i,j,k,m,n)
+    for n in range(0,num_X13to18)
+    for m in range(0,num_X12to13)
+    for k in range(num_Nco)
+    for j in range(num_nH2)
+    for i in range(num_Tk)
+    )
 input_time = time.time()
-print('Elapsed time for writing inputs: %s sec' % ((input_time - start_time)))
+print(f'It took {(input_time - start_time):.2f} seconds to write all .inp files.') # modi by qing (20260113)
 
 # Run RADEX for molecules 0,1,2
-Parallel(n_jobs=num_cores)(delayed(run_radex_m0)(i,j,k) for k in range(num_Nco) for j in range(num_nH2) for i in range(num_Tk))  
-Parallel(n_jobs=num_cores)(delayed(run_radex_m1)(i,j,k,m) for m in range(0,num_X12to13) for k in range(num_Nco) for j in range(num_nH2) for i in range(num_Tk))          
-Parallel(n_jobs=num_cores)(delayed(run_radex_m2)(i,j,k,m,n) for n in range(0,num_X13to18) for m in range(0,num_X12to13) for k in range(num_Nco) for j in range(num_nH2) for i in range(num_Tk))
-radex_time = time.time() 
-print('Elapsed time for running RADEX: %s sec' % ((radex_time - input_time)))
+Parallel(n_jobs=num_cores)(
+    delayed(run_radex_m0)(i,j,k)
+    for k in range(num_Nco)
+    for j in range(num_nH2)
+    for i in range(num_Tk)
+    )  
+Parallel(n_jobs=num_cores)(
+    delayed(run_radex_m1)(i,j,k,m)
+    for m in range(0,num_X12to13)
+    for k in range(num_Nco)
+    for j in range(num_nH2)
+    for i in range(num_Tk)
+    )          
+Parallel(n_jobs=num_cores)(
+    delayed(run_radex_m2)(i,j,k,m,n)
+    for n in range(0,num_X13to18)
+    for m in range(0,num_X12to13)
+    for k in range(num_Nco)
+    for j in range(num_nH2)
+    for i in range(num_Tk)
+    )
+radex_time = time.time()
+print(f'It took {(radex_time - input_time):.2f} seconds to finish running RADEX.') # modi by qing (20260113)
 
 # Construct 3D - 5D flux models
-results = Parallel(n_jobs=num_cores)(delayed(radex_flux)(i,j,k,m,n) for n in range(0,num_X13to18) for m in range(0,num_X12to13) for k in range(num_Nco) for j in range(num_nH2) for i in range(num_Tk))
-
-flux_co10 =  np.full((num_Nco,num_Tk,num_nH2),np.nan)
-flux_co21 = np.full((num_Nco,num_Tk,num_nH2),np.nan)
-flux_13co21 = np.full((num_Nco,num_Tk,num_nH2,num_X12to13),np.nan)
-flux_13co32 = np.full((num_Nco,num_Tk,num_nH2,num_X12to13),np.nan)
-flux_c18o21 = np.full((num_Nco,num_Tk,num_nH2,num_X12to13,num_X13to18),np.nan)
-flux_c18o32 = np.full((num_Nco,num_Tk,num_nH2,num_X12to13,num_X13to18),np.nan)
+results = Parallel(n_jobs=num_cores)(
+    delayed(radex_flux)(i,j,k,m,n)
+    for n in range(0,num_X13to18)
+    for m in range(0,num_X12to13)
+    for k in range(num_Nco)
+    for j in range(num_nH2)
+    for i in range(num_Tk)
+    )
+flux_co10 =  np.full((num_Nco,num_Tk,num_nH2), np.nan)
+flux_co21 = np.full((num_Nco,num_Tk,num_nH2), np.nan)
+flux_13co21 = np.full((num_Nco,num_Tk,num_nH2,num_X12to13), np.nan)
+flux_13co32 = np.full((num_Nco,num_Tk,num_nH2,num_X12to13), np.nan)
+flux_c18o21 = np.full((num_Nco,num_Tk,num_nH2,num_X12to13,num_X13to18), np.nan)
+flux_c18o32 = np.full((num_Nco,num_Tk,num_nH2,num_X12to13,num_X13to18), np.nan)
 
 for result in results:
     k, i, j, m, n, flux_0, flux_1, flux_2 = result
@@ -233,13 +286,14 @@ for result in results:
     flux_c18o21[k,i,j,m,n] = flux_2[0]
     flux_c18o32[k,i,j,m,n] = flux_2[1]
 
-np.save(productPath+'/'+sou_model+'flux_'+model+'_co10.npy', flux_co10)
-np.save(productPath+'/'+sou_model+'flux_'+model+'_co21.npy', flux_co21)
-np.save(productPath+'/'+sou_model+'flux_'+model+'_13co21.npy', flux_13co21)
-np.save(productPath+'/'+sou_model+'flux_'+model+'_13co32.npy', flux_13co32)
-np.save(productPath+'/'+sou_model+'flux_'+model+'_c18o21.npy', flux_c18o21)
-np.save(productPath+'/'+sou_model+'flux_'+model+'_c18o32.npy', flux_c18o32) 
-print('Flux models saved; elapsed time for construction: %s sec' % ((time.time() - radex_time)))
+np.save(productPath+'/'+sou_model+'flux_'+model+'_co-10.npy',   flux_co10) # (filename) modi by qing (20260113)
+np.save(productPath+'/'+sou_model+'flux_'+model+'_co-21.npy',   flux_co21)
+np.save(productPath+'/'+sou_model+'flux_'+model+'_13co-21.npy', flux_13co21)
+np.save(productPath+'/'+sou_model+'flux_'+model+'_13co-32.npy', flux_13co32)
+np.save(productPath+'/'+sou_model+'flux_'+model+'_c18o-21.npy', flux_c18o21)
+np.save(productPath+'/'+sou_model+'flux_'+model+'_c18o-32.npy', flux_c18o32)
+flux_time = time.time()
+print('Flux models saved.')
 
 # Construct 5D ratio models
 temp = np.repeat(flux_co21[:, :, :, np.newaxis], num_X12to13, axis=3)
@@ -247,7 +301,7 @@ co21_5d = np.repeat(temp[:, :, :, :, np.newaxis], num_X13to18, axis=4)
 temp2 = np.repeat(flux_co10[:, :, :, np.newaxis], num_X12to13, axis=3)
 co10_5d = np.repeat(temp2[:, :, :, :, np.newaxis], num_X13to18, axis=4)
 c13o_21_5d = np.repeat(flux_13co21[:, :, :, :, np.newaxis], num_X13to18, axis=4)
-c13o_32_5d = np.repeat(flux_13co32[:, :, :, :, np.newaxis], num_X13to18, axis=4) 
+c13o_32_5d = np.repeat(flux_13co32[:, :, :, :, np.newaxis], num_X13to18, axis=4)
 
 ratio_co = co21_5d/co10_5d
 ratio_13co = c13o_32_5d/c13o_21_5d
@@ -257,14 +311,21 @@ ratio_co2c18o = co21_5d/flux_c18o21
 ratio_13co2c18o_21 = c13o_21_5d/flux_c18o21
 ratio_13co2c18o_32 = c13o_32_5d/flux_c18o32
 
-np.save(productPath+'/'+sou_model+'ratio_'+model+'_co_21_10.npy',ratio_co)
-np.save(productPath+'/'+sou_model+'ratio_'+model+'_13co_32_21.npy',ratio_13co)
-np.save(productPath+'/'+sou_model+'ratio_'+model+'_c18o_32_21.npy',ratio_c18o)
-np.save(productPath+'/'+sou_model+'ratio_'+model+'_co_13co_21.npy',ratio_co213co)
-np.save(productPath+'/'+sou_model+'ratio_'+model+'_co_c18o_21.npy',ratio_co2c18o)
-np.save(productPath+'/'+sou_model+'ratio_'+model+'_13co_c18o_21.npy',ratio_13co2c18o_21)
-np.save(productPath+'/'+sou_model+'ratio_'+model+'_13co_c18o_32.npy',ratio_13co2c18o_32)
+np.save(productPath+'/'+sou_model+'ratio_'+model+'_co-21_over_co_10.npy',     ratio_co) # (filename) modi by qing (20260113)
+np.save(productPath+'/'+sou_model+'ratio_'+model+'_13co-32_over_13co-21.npy', ratio_13co)
+np.save(productPath+'/'+sou_model+'ratio_'+model+'_c18o-32_over_c18o-21.npy', ratio_c18o)
+np.save(productPath+'/'+sou_model+'ratio_'+model+'_co-21_over_c13o-21.npy',   ratio_co213co)
+np.save(productPath+'/'+sou_model+'ratio_'+model+'_co-21_over_c18o-21.npy',   ratio_co2c18o)
+np.save(productPath+'/'+sou_model+'ratio_'+model+'_13co-21_over_c18o-21.npy', ratio_13co2c18o_21)
+np.save(productPath+'/'+sou_model+'ratio_'+model+'_13co-32_over_c18o-32.npy', ratio_13co2c18o_32)
 print('Ratio models saved.')
+endpl_time = time.time()
 
-end_time = time.time()
-print('Total lapsed time: %s sec' % ((end_time - start_time)))
+# Write Time Record
+# modi by qing (20260113)
+timerec = open(f'{projectRoot}/docs/radex-pipeline_timeRecord.txt', 'w')
+timerec.write(f'It took {(input_time - start_time):.2f} seconds to write all .inp files.\n')
+timerec.write(f'It took {(radex_time - input_time):.2f} seconds to finish running RADEX.\n')
+timerec.write(f'It took {(flux_time - radex_time):.2f} seconds to save flux models.\n')
+timerec.write(f'It took {(endpl_time - start_time):.2f} seconds to do everythig in "radex_pipeline.py, Eitha".\n')
+timerec.close()
