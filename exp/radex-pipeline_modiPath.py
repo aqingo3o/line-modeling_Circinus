@@ -26,7 +26,6 @@ productPath = f'{projectRoot}/products/from_radex-pipeline'
 {dataPath}/output_5d_coarse_co
 {dataPath}/output_5d_coarse_13co
 {dataPath}/output_5d_coarse_c18o
-{projectRoot}/products/from_radex-pipeline
 '''
 
 # Parameter Settings
@@ -234,12 +233,12 @@ for result in results:
     flux_c18o21[k,i,j,m,n] = flux_2[0]
     flux_c18o32[k,i,j,m,n] = flux_2[1]
 
-np.save(productPath+sou_model+'flux_'+model+'_co10.npy', flux_co10)
-np.save(productPath+sou_model+'flux_'+model+'_co21.npy', flux_co21)
-np.save(productPath+sou_model+'flux_'+model+'_13co21.npy', flux_13co21)
-np.save(productPath+sou_model+'flux_'+model+'_13co32.npy', flux_13co32)
-np.save(productPath+sou_model+'flux_'+model+'_c18o21.npy', flux_c18o21)
-np.save(productPath+sou_model+'flux_'+model+'_c18o32.npy', flux_c18o32) 
+np.save(productPath+'/'+sou_model+'flux_'+model+'_co10.npy', flux_co10)
+np.save(productPath+'/'+sou_model+'flux_'+model+'_co21.npy', flux_co21)
+np.save(productPath+'/'+sou_model+'flux_'+model+'_13co21.npy', flux_13co21)
+np.save(productPath+'/'+sou_model+'flux_'+model+'_13co32.npy', flux_13co32)
+np.save(productPath+'/'+sou_model+'flux_'+model+'_c18o21.npy', flux_c18o21)
+np.save(productPath+'/'+sou_model+'flux_'+model+'_c18o32.npy', flux_c18o32) 
 print('Flux models saved; elapsed time for construction: %s sec' % ((time.time() - radex_time)))
 
 # Construct 5D ratio models
@@ -258,13 +257,13 @@ ratio_co2c18o = co21_5d/flux_c18o21
 ratio_13co2c18o_21 = c13o_21_5d/flux_c18o21
 ratio_13co2c18o_32 = c13o_32_5d/flux_c18o32
 
-np.save(productPath+sou_model+'ratio_'+model+'_co_21_10.npy',ratio_co)
-np.save(productPath+sou_model+'ratio_'+model+'_13co_32_21.npy',ratio_13co)
-np.save(productPath+sou_model+'ratio_'+model+'_c18o_32_21.npy',ratio_c18o)
-np.save(productPath+sou_model+'ratio_'+model+'_co_13co_21.npy',ratio_co213co)
-np.save(productPath+sou_model+'ratio_'+model+'_co_c18o_21.npy',ratio_co2c18o)
-np.save(productPath+sou_model+'ratio_'+model+'_13co_c18o_21.npy',ratio_13co2c18o_21)
-np.save(productPath+sou_model+'ratio_'+model+'_13co_c18o_32.npy',ratio_13co2c18o_32)
+np.save(productPath+'/'+sou_model+'ratio_'+model+'_co_21_10.npy',ratio_co)
+np.save(productPath+'/'+sou_model+'ratio_'+model+'_13co_32_21.npy',ratio_13co)
+np.save(productPath+'/'+sou_model+'ratio_'+model+'_c18o_32_21.npy',ratio_c18o)
+np.save(productPath+'/'+sou_model+'ratio_'+model+'_co_13co_21.npy',ratio_co213co)
+np.save(productPath+'/'+sou_model+'ratio_'+model+'_co_c18o_21.npy',ratio_co2c18o)
+np.save(productPath+'/'+sou_model+'ratio_'+model+'_13co_c18o_21.npy',ratio_13co2c18o_21)
+np.save(productPath+'/'+sou_model+'ratio_'+model+'_13co_c18o_32.npy',ratio_13co2c18o_32)
 print('Ratio models saved.')
 
 end_time = time.time()
