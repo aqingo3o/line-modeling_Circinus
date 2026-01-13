@@ -18,7 +18,7 @@ start_time = time.time()
 from pathlib import Path
 projectRoot = Path(__file__).resolve().parents[1] # .../line-modeling_Circinus, no slash at the end
 dataPath = f'{projectRoot}/data/radex_io'
-productPath = f'{projectRoot}/products/from_radex-pipeline'
+productPath = f'{projectRoot}/products'
 '''Folder ask to be exist:
 {dataPath}/input_5d_coarse_co
 {dataPath}/input_5d_coarse_13co
