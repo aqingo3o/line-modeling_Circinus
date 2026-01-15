@@ -1,7 +1,7 @@
 # line-modeling_Circinus
 **⚠️ This repo mainly serves as a personal log of the research process and may contain contain many imperfect operations .**  
 >
-**👾 Current Progress:** I've tried src/radex-pipeline_*.py, some failed and some is still running... 
+**👾 Current Progress:** `radex_pipeline.py` and `flux_model_6d.py` are technically working, but I don't know why we should do like that.
 >
 ---
 ## Repository Structure
@@ -20,12 +20,3 @@ This repo is organized as follows:
 ├── LICENSE                   # ok I know I write a piece of shit.
 └── README.md                 # YOU ARE HERE ;)
 ```
-
-## Environment (2025.12.27)
-**feifei:** macOS Sequoia 15.6.1, M3 chip (arm-64)  
-..  
-
-**Lab computer:** Ubuntu20.04  
-Model fitting requires computational powerrrr, so I perform those tasks on desktop.  
-(But I think writing .inp files on feifei is much faster?)
-Thought I may not use `pyradex` for modeling, I still need to mention that I could only make `pyradex` works on Linux now. :(  
