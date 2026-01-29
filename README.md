@@ -1,5 +1,6 @@
 # line-modeling_Circinus
-**⚠️ This repo mainly serves as a personal log of the research process and may contain contain many imperfect operations .**  
+> [!CAUTION]
+> This repo mainly serves as a personal log of the research process and may contain contain many imperfect operations .   
 >
 **👾 Current Progress:** `radex_pipeline.py` and `flux_model_6d.py` are technically working, but I don't know why we should do like that.
 >
