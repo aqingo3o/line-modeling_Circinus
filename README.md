@@ -21,6 +21,7 @@ This repo is organized as follows:
 ├── LICENSE                   # ok I know I write a piece of shit.
 └── README.md                 # YOU ARE HERE ;)
 ```
+`thisFolder.md` in subfolders can tell more.
 
 ## data/
 There are `.dat` files that used for modeling.   
@@ -29,16 +30,14 @@ To get the `.dat`s, please check [where-to-get-dat.md](../docs/where-to-get-dat.
 
 ## docs/
 Documents :)
-- *pyradex_patches/*  
-Since the patches comes from a fortran 大菜雞, please use it carefully with [installation-handBook_pyradex.md](../docs/installation-handBook_pyradex.md).  
-Referenced from [keflavich/pyradex](https://github.com/keflavich/pyradex). Tthe repo may be updated, so please refer to keflavich's repo for the most accurate information.
-- *installation-handBook_pyradex.md*  
-這真的巨媽麻煩，好消息是建模主體並不會用到 `pyradex`，只是因為誤會了什麼所以才 work on installing `pyradex` :(  
-- *installation-hint_RADEX.md*  
-Actually, [RADEX's official website](https://sronpersonalpages.nl/~vdtak/radex/index.shtml) already explains it very clearly, so this is just a note.
-- *try_radex-pipeline.md*   
-The logs(natural language) of running [this series](../scripts/radex-pipeline) of programs.
-Aside from lots of unnecessary details, this is quite valuable for reference, and also record the script's evolution tree. Recommended:)
-- *where-to-get-dat.md*  
-As the filename, it explains where and how to get `.dat` files. Please don't laugh because I genuinely didn't know where to find these files at first.
-I thought RADEX would download them automaticallyt?  
+
+## envs/
+
+## exp/
+
+## products/
+如果做了什麼好的的話，將會放在這裡。  
+
+## scripts/
+從 [exp/](../exp) 來的東西，相對稍微經過測試的好版  
+也包含一些有用小工具，總之是推薦的一個好物聚集。  
