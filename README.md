@@ -5,22 +5,6 @@
 **👾 Current Progress:** `radex_pipeline.py` and `flux_model_6d.py` are technically working, but I don't know why we should do like that.
 >
 ---
-## Repository Structure
-This repo is organized as follows:
-```
-.
-├── data/                     # .dat files used in RADEX
-├── docs/                     # Documentation, notes, and something human-facing
-│   └── pyradex_patches/      # Patches for pyradex installation.
-├── envs/                     # Environment configuration files (.yml or something like that)
-├── exp/                      # Test pipelines, and exploratory code
-├── products/                 # Products. (if have :)
-├── pyradex_at-first-sight/   # A bottle of shit, never use that.
-├── scripts/                  # Usable scripts
-├── (src/)                    # (not yet)
-├── LICENSE                   # ok I know I write a piece of shit.
-└── README.md                 # YOU ARE HERE ;)
-```
 `thisFolder.md` in subfolders can tell more.
 
 ## data/
@@ -29,14 +13,20 @@ Data cubes from ALMA are in the local data/, I'm not sure if those are public da
 To get the `.dat`s, please check [where-to-get-dat.md](../docs/where-to-get-dat.md). (just download from [LAMDA](https://home.strw.leidenuniv.nl/~moldata/), 23333)  
 
 ## docs/
-Documents :)
+Documentation, notes, and something human-facing.  
 
 ## envs/
+Environment configuration files (.yml or something like that)
 
 ## exp/
+Test pipelines, and exploratory code.  
+基本上我會建議不要使用這邊的東西，因為是試驗性質的東西所以基本上都在亂改哈哈，一鍋雜湯。
 
 ## products/
-如果做了什麼好的的話，將會放在這裡。  
+如果做了什麼好的的話，將會放在這裡。 
+
+## pyradex_at-first-sight/
+A bottle of shit, never use that.
 
 ## scripts/
 從 [exp/](../exp) 來的東西，相對稍微經過測試的好版  
