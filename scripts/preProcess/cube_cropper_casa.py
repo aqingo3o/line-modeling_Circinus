@@ -14,7 +14,7 @@ cubes = glob.glob(f'{dataPath}/ori_cube/cube_*.fits')
 cubes.sort() # 確保在各處的排序都是相同的
 
 wanted = [ # (mole, channels(casaForm, check from CARTA))
-    ('c18o-10', '2600~3800', '6a'),
+    ('c18o-10', '2600~3800', '3a'),
     ('13co-10', '200~1200',  '3a'),
     ('co-10',   '1700~2700', '3b'),
     ('c18o-21', '2100~3500', '6a'),
