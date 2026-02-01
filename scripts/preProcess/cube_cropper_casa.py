@@ -7,17 +7,19 @@ Crop datacubes into smaller pieces.
 import glob
 import shutil
 
-projectRoot = '/home/aqing/Documents/line-modeling_Circinus'
+projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus' # for feifei
+#projectRoot = '/home/aqing/Documents/line-modeling_Circinus' # for Lab Machine
 dataPath = f'{projectRoot}/data/alma_cube'
 cubes = glob.glob(f'{dataPath}/ori_cube/cube_*.fits')
+cubes.sort() # 確保在各處的排序都是相同的
 
 wanted = [ # (mole, channels(casaForm, check from CARTA))
+    ('c18o-10', '2600~3800', '6a'),
     ('13co-10', '200~1200',  '3a'),
-    ('13co-21', '500~2200',  '6a'),
-    ('c18o-21', '2100~3500', '6a'),
-    ('co-21',   '2300~3700', '6a'),
     ('co-10',   '1700~2700', '3b'),
-    ('c18o-10', '2600~3800', '6a'), # 按照 cubes 的順序的啊
+    ('c18o-21', '2100~3500', '6a'),
+    ('13co-21', '500~2200',  '6a'),
+    ('co-21',   '2300~3700', '6a'),
 ]
 
 for i in range(len(cubes)):
