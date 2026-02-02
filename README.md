@@ -2,7 +2,7 @@
 > [!CAUTION]
 > This repo mainly serves as a personal log of the research process and may contain contain many imperfect operations .   
 >
-**👾 Current Progress:** the README.md is a piece of shit and I don't know how to fix it @@
+**👾 Current Progress:** Masuring noise in each cubes.  
 >
 ---
 ## envs/
