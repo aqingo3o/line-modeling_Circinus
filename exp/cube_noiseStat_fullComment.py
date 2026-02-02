@@ -7,7 +7,9 @@ the datacubes had been cropped by CASA ({projectRoot}/data/alma_cube/cropped_cub
 '''
 
 from astropy import units as u
+import matplotlib.pyplot as plt
 import numpy as np
+from scipy.signal import find_peaks
 from spectral_cube import SpectralCube
 import warnings
 
@@ -19,23 +21,15 @@ projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus' # 因為不�
 dataPath = f'{projectRoot}/data/alma_cube/cropped_cube'
 
 # (mole_fileName, band_fileName, (blankChannel))
-'''
-moles_info = [
-    ('co-10',   '3b', ()),
-    ('13co-10', '3a', (56, 316, 721, 900)),
-    ('c18o-10', '3a', ()),
-    ('co-21',   '6a', ()),
-    ('13co-21', '6a', ()),
-    ('c18o-21', '6a', ()),
-]
-'''
-moles_info = [ # for test
-    #('co-10',   '3b', ()),
-    ('13co-10', '3a', (56, 316, 721, 900)),
-]
+moles_info = [('co-10',   '3b', (113, 320, 727, 906)),
+              ('13co-10', '3a', (56, 316, 721, 900)),
+              ('c18o-10', '3a', (182, 475, 893, 1094)),
+              ('co-21',   '6a', (86, 327, 1036, 1323)),
+              ('13co-21', '6a', (41, 257, 1012, 1544)),
+              ('c18o-21', '6a', (65, 275, 1043, 1200))
+              ]
 
-noiseList = []
-radiiList = []
+noiseList, radiiList = [], []
 '''
 # noiseList
 [[co-10在各種尺寸遮罩下的噪音], [13co-10在各種尺寸遮罩下的噪音], [c18o-10在各種尺寸遮罩下的噪音], ...]
@@ -107,9 +101,8 @@ for molename, band, cblank in moles_info: # cblank 是一個長度4的channel串
         會看起來一樣
         '''
         noise = 0 * (u.Jy/u.beam) # 歸零，放個單位
-#'''
         for c in cblank:
-            noise = np.nanstd(cube_masked[c].filled_data[:])
+            noise += np.nanstd(cube_masked[c].filled_data[:])
             '''# 他媽的這邊我用超久
             cube[c] 就是 cube 的第c個 channel
             filled_data[:] 像是取出所有值並轉職成一維陣列？
@@ -119,7 +112,35 @@ for molename, band, cblank in moles_info: # cblank 是一個長度4的channel串
 
     noiseList.append(noiseList_mole)
     radiiList.append(radiiList_mole) # 寫在這邊比較對稱哈哈
-#'''
-print(noiseList)
-print(len(noiseList[0]))
-print('finalllllllllly')
+    print(f'Noise statistics for {molename} was done :)')
+
+if len(noiseList)==6:
+    print('At least no BIG problem?')
+
+"""
+# 應該寫點能把資料存下來的不然有點浪費時間
+"""
+
+# plot
+# 非常髒的 顧前不顧後的寫法
+fig, ax = plt.subplots(2, 3, figsize=(10, 6)) # 不管怎麼調都是一個醜樣
+ax_flat = ax.flatten() # 壓成 1d 這樣可以用洄圈
+
+for i in range(len(moles_info)):
+    noiseList_dimless = []
+    for j in noiseList[i]:
+        noiseList_dimless.append(j.value)
+    ax_flat[i].plot(radiiList[i], noiseList_dimless)
+    ax_flat[i].set_title(f'{moles_info[i][0]} noise to r_mask')
+    if i==0 or i==3:
+        ax_flat[i].set_ylabel('std (Jy/beam)')
+    if i>2:
+        ax_flat[i].set_xlabel('radius_mask (arcsec)')
+
+    # find peak
+    # 狗屎
+    peaks, _ = find_peaks(radiiList[i], height=0.002)
+    ax_flat[i].plot(peaks, radiiList[i][peaks], "x")
+    
+plt.tight_layout() # 神奇妙妙工具
+plt.show()
