@@ -5,12 +5,16 @@
 **👾 Current Progress:** Masuring noise in each cubes.  
 >
 ---
+## Order
+I am not really sure but [radex-pipeline](scripts/radex-pipeline/) should be done first.
+
 ## Repo structure
 ### envs/
 Environment configuration files (.yml or something like that)    
 
 ### docs/
 Documentation, notes, and something human-facing.  
+<details>
 - **pyradex_patches/**  
 Since the patches comes from a fortran 大菜雞, please use it carefully with [installation-handBook_pyradex.md](../docs/installation-handBook_pyradex.md).  
 Referenced from [keflavich/pyradex](https://github.com/keflavich/pyradex). Tthe repo may be updated, so please refer to keflavich's repo for the most accurate information.
@@ -24,6 +28,7 @@ Aside from lots of unnecessary details, this is quite valuable for reference, an
 - **where-to-get-dat.md**  
 As the filename, it explains where and how to get `.dat` files. Please don't laugh because I genuinely didn't know where to find these files at first.
 I thought RADEX would download them automaticallyt?  
+</details>
 
 ### data/
 There are `.dat` files that used for modeling.   
