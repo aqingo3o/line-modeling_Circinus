@@ -8,12 +8,19 @@
 ## Order
 I am not really sure but [radex-pipeline](scripts/radex-pipeline/) should be done first.
 
-## Repo structure
-### envs/
-Environment configuration files (.yml or something like that)    
+## Repository Structure
+|Folder|Description|Rating
+|---|---|---|
+[envs/](envs)|Environment configuration files (.yml or something like that)        |8
+[docs/](docs)|Documentation, notes, and something human-facing.                    |-
+[data/](data)|There are `.dat` files that used for modeling.                       |-
+[exp/](exp)|Test pipelines, and exploratory code.                                  |0
+[scripts/](scripts)|Something good...?                                             |7
+[products/](scripts)|(if any...)                                                   |? 
 
-### docs/
-Documentation, notes, and something human-facing.  
+[pyradex_at-first-sight/](pyradex_at-first-sight) Is a bottle of shit, never use that.💩  
+
+### docs/  
 <details>
 - **pyradex_patches/**  
 Since the patches comes from a fortran 大菜雞, please use it carefully with [installation-handBook_pyradex.md](../docs/installation-handBook_pyradex.md).  
@@ -30,8 +37,7 @@ As the filename, it explains where and how to get `.dat` files. Please don't lau
 I thought RADEX would download them automaticallyt?  
 </details>
 
-### data/
-There are `.dat` files that used for modeling.   
+### data/ 
 Data cubes from ALMA are in the local data/, I'm not sure if those are public data... so only `.dat` files here.  
 To get the `.dat`s, please check [where-to-get-dat.md](../docs/where-to-get-dat.md). (just download from [LAMDA](https://home.strw.leidenuniv.nl/~moldata/), 23333)
 
@@ -45,6 +51,3 @@ Test pipelines, and exploratory code.
 
 ### products/
 如果做了什麼好的的話，將會放在這裡。 
-
-### pyradex_at-first-sight/
-A bottle of shit, never use that.
