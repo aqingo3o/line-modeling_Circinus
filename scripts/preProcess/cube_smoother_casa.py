@@ -2,6 +2,12 @@
 # A script for full CASA
 '''
 又來到的熟悉的 convole to the same beam 
+
+!! 如果這個腳本運行到一半 casa 就被 killed
+可能是因為 ram 爆炸了 (Linux terminal: )
+在終端先輸入 export OMP_NUM_THREADS=4
+再進入 casa 就可以解決ヽ(｀▽´)ノ 但運行時間當然會加倍啦
+總之不要塞滿執行緒, Lab 那台好像有 12 緒吧, 全塞滿的話大 cube 會爆 ram
 '''
 #from casatasks import importfits, imsmooth, exportfits
 import shutil
