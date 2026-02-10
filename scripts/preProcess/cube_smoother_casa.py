@@ -13,7 +13,7 @@ dataPath = f'{projectRoot}/data/alma_cube'
 
 # Parameters
 kernel = 'gauss'
-targetBeam = {'major': '3.077arcsec', 'minor': '2.867arcsec', 'pa': '23.898deg'} # 13co-10's original beam (band 3a)
+targetBeam = {'major': '3.2arcsec', 'minor': '3.2arcsec', 'pa': '0deg'} # 大一點點
 wanted = [  # (mole, band, restFrequency(Hz))
     ('13co-10', '3a'), ('c18o-10', '3a'), ('co-10', '3b'),
     ('13co-21', '6a'), ('c18o-21', '6a'), ('co-21', '6a'),
