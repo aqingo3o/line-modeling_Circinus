@@ -43,7 +43,7 @@ for i in range(len(cubes)):
     print(f"Finish cropping of {mole} and the header keyWord 'RESTFREQ' now is {f0} Hz") 
 
     exportfits(imagename='casaCUT.im', fitsimage=pathOUT, overwrite=True)
-    shutil.rmtree('casaOUT.im')
+    shutil.rmtree('casaCUT.im')
     shutil.rmtree('casaIN.im')
     print(f"Finish processing {mole}'s original cube and metafiles are cleaned")
 
