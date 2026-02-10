@@ -1,4 +1,4 @@
-# You MUST put this script on feifei,
+# You should put this script on feifei,
 # because of the hard-coded folder path
 '''
 How much Jy/beam of noise should be masked when generating mom0.  
@@ -9,7 +9,6 @@ the datacubes had been cropped by CASA ({projectRoot}/data/alma_cube/cropped_cub
 from astropy import units as u
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.signal import find_peaks
 from spectral_cube import SpectralCube
 import warnings
 
@@ -18,7 +17,8 @@ warnings.filterwarnings('ignore', message='.*PV2.*')
 
 # Path
 projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus'
-dataPath = f'{projectRoot}/data/alma_cube/cropped_cube'
+#dataPath = f'{projectRoot}/data/alma_cube/cropped_cube'
+dataPath = f'{projectRoot}/data/alma_cube/smoothed_cube'
 
 # (mole_fileName, band_fileName, (blankChannel))
 moles_info = [('co-10',   '3b', (113, 320, 727, 906)),
@@ -34,8 +34,8 @@ noiseList, radiiList = [], []
 # Main
 radii_step = 0.5 * u.arcsec
 for molename, band, cblank in moles_info:
-    cube = SpectralCube.read((f"{dataPath}/cube_Band{band}_{molename}_cropped.fits"))
-    print(f'cube_Band{band}_{molename}_cropped.fits was loaded.')
+    cube = SpectralCube.read(f'{dataPath}/cube_Band{band}_{molename}_smoothTO13co-10.fits')
+    print(f'cube_Band{band}_{molename}_smoothTO13co-10.fits was loaded.')
 
     # 以中心為中心畫圓
     ra_crval  = cube.wcs.wcs.crval[0] * u.deg
@@ -93,11 +93,5 @@ for i in range(len(moles_info)):
     if i>2:
         ax_flat[i].set_xlabel('radius_mask (arcsec)')
 
-    # find peak
-    # 好像來不能好
-    peaks, _ = find_peaks(radiiList[i], height=0.002)
-    ax_flat[i].plot(peaks, radiiList[i][peaks], "x")
-
-   
 plt.tight_layout() # 神奇妙妙工具
 plt.show()
