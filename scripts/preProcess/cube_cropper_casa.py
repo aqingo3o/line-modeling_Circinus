@@ -8,6 +8,7 @@ Cut datacubes into smaller pieces and revise the header keyword 'RESTFREQ'
 import glob
 import shutil
 
+# Files and Path
 projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus' # for feifei
 #projectRoot = '/home/aqing/Documents/line-modeling_Circinus'       # for Lab Machine
 dataPath = f'{projectRoot}/data/alma_cube'
@@ -24,13 +25,14 @@ wanted = [
     ('co-21',   '6a', '2300~3700', 2.30538E+11),
 ]
 
+# Cropping
 for i in range(len(cubes)):
     pathIN = cubes[i]
-    pathOUT = f'{dataPath}/cropped_cube/cube_Band{band}_{filename}_cropped.fits'
     mole = wanted[i][0]
     band = wanted[i][1]
     spchanns = wanted[i][2]
     f0 = wanted[i][3]
+    pathOUT = f'{dataPath}/cropped_cube/cube_Band{band}_{filename}_cropped.fits'
 
     importfits(fitsimage=pathIN, imagename='casaIN.im', overwrite=True)
     print('Successfully import a datacube.')
