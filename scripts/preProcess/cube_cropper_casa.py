@@ -32,7 +32,7 @@ for i in range(len(cubes)):
     band = wanted[i][1]
     spchanns = wanted[i][2]
     f0 = wanted[i][3]
-    pathOUT = f'{dataPath}/cropped_cube/cube_Band{band}_{filename}_cropped.fits'
+    pathOUT = f'{dataPath}/cropped_cube/cube_Band{band}_{mole}_cropped.fits'
 
     importfits(fitsimage=pathIN, imagename='casaIN.im', overwrite=True)
     print('Successfully import a datacube.')
