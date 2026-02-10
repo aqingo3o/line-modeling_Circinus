@@ -22,7 +22,7 @@ wanted = [  # (mole, band, restFrequency(Hz))
 # Smoothing
 for mole, band in wanted:
     pathIN = f'{dataPath}/cropped_cube/cube_Band{band}_{mole}_cropped.fits'
-    pathOUT = f'{dataPath}/smoothed_cube/cube_Band{band}_{mole}_smoothTO13co-10.fits'
+    pathOUT = f'{dataPath}/smoothed_cube/cube_Band{band}_{mole}_smooth3.2as.fits'
 
     importfits(fitsimage=pathIN, imagename='casaIN.im', overwrite=True)
     print('Successfully import a datacube.')
