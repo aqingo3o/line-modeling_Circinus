@@ -1,39 +1,48 @@
 # from github: Hello_Circinus/miniscripts
 # A script for full CASA
 '''
-Crop datacubes into smaller pieces.
-因為還有計算噪音的需求所以會留下線兩端的空白區間哈哈屁眼
+Cut datacubes into smaller pieces and revise the header keyword 'RESTFREQ'
+因為還有計算噪音的需求所以會留下線兩端的空白區間
 '''
+#from casatasks import importfits, imsubimage, imhead, exportfits
 import glob
 import shutil
 
 projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus' # for feifei
-#projectRoot = '/home/aqing/Documents/line-modeling_Circinus' # for Lab Machine
+#projectRoot = '/home/aqing/Documents/line-modeling_Circinus'       # for Lab Machine
 dataPath = f'{projectRoot}/data/alma_cube'
 cubes = glob.glob(f'{dataPath}/ori_cube/cube_*.fits')
-cubes.sort() # 確保在各處的排序都是相同的
+cubes.sort() # make sure the order is the same in every computer!
 
-wanted = [ # (mole, channels(casaForm, check from CARTA))
-    ('c18o-10', '2600~3800', '3a'),
-    ('13co-10', '200~1200',  '3a'),
-    ('co-10',   '1700~2700', '3b'),
-    ('c18o-21', '2100~3500', '6a'),
-    ('13co-21', '500~2200',  '6a'),
-    ('co-21',   '2300~3700', '6a'),
+# (mole, band, specLine's channels(casaForm, check from CARTA), restFrequency(Hz))
+wanted = [ 
+    ('c18o-10', '3a', '2600~3800', 1.09782E+11),
+    ('13co-10', '3a', '200~1200',  1.10201E+11),
+    ('co-10',   '3b', '1700~2700', 1.15271E+11),
+    ('c18o-21', '6a', '2100~3500', 2.19560E+11),
+    ('13co-21', '6a', '500~2200',  2.20399E+11),
+    ('co-21',   '6a', '2300~3700', 2.30538E+11),
 ]
 
 for i in range(len(cubes)):
     pathIN = cubes[i]
+    pathOUT = f'{dataPath}/cropped_cube/cube_Band{band}_{filename}_cropped.fits'
+    mole = wanted[i][0]
+    band = wanted[i][1]
+    spchanns = wanted[i][2]
+    f0 = wanted[i][3]
+
     importfits(fitsimage=pathIN, imagename='casaIN.im', overwrite=True)
     print('Successfully import a datacube.')
-    filename = wanted[i][0]
-    channs = wanted[i][1]
-    band = wanted[i][2]
-    outfile = f'{dataPath}/cropped_cube/cube_Band{band}_{filename}_cropped.fits'
-    imsubimage(imagename='casaIN.im', outfile='casaOUT.im', chans=channs)
-    exportfits(imagename='casaOUT.im', fitsimage=outfile, overwrite=True)
-    shutil.rmtree('casaOUT.im')
-    print(f'{outfile} was done.')
-    shutil.rmtree('casaIN.im')
 
-print('All finish :)')
+    imsubimage(imagename='casaIN.im', outfile='casaCUT.im', chans=spchanns)
+    imhead(imagename='casaCUT.im',
+           mode='put', hdkey='restfreq', hdvalue=str(f0)) # 資料型態竟然要是字串，不客氣，幫轉了
+    print(f"Finish cropping of {mole} and the header keyWord 'RESTFREQ' now is {f0} Hz") 
+
+    exportfits(imagename='casaCUT.im', fitsimage=pathOUT, overwrite=True)
+    shutil.rmtree('casaOUT.im')
+    shutil.rmtree('casaIN.im')
+    print(f"Finish processing {mole}'s original cube and metafiles are cleaned")
+
+print('All done :)')
