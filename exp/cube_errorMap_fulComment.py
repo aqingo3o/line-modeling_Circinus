@@ -4,7 +4,7 @@
 Make the error map of datacubes, which had been cropped by CASA ({projectRoot}/data/alma_cube/cropped_cube)
 ever ring of **dr** have different noise level...?
 
-會噴一些 RuntimeWarning, 但好像沒什麼關係?
+多虧我大便一般的寫法, 跑這個腳本需要頗多時間哈哈屁眼
 '''
 
 from astropy import units as u
@@ -23,7 +23,6 @@ projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus'
 dataPath = f'{projectRoot}/data/alma_cube/smoothed_cube'
 
 # (mole_fileName, band_fileName, (blankChannel))
-'''
 moles_info = [('co-10',   '3b', (113, 320, 727, 906)),
               ('13co-10', '3a', (56, 316, 721, 900)),
               ('c18o-10', '3a', (182, 475, 893, 1094)),
@@ -31,7 +30,6 @@ moles_info = [('co-10',   '3b', (113, 320, 727, 906)),
               ('13co-21', '6a', (41, 257, 1012, 1544)),
               ('c18o-21', '6a', (65, 275, 1043, 1200)),
               ]
-'''
 noiseList, radiiList, errorMap = [], [], []
 '''
 # noiseList
@@ -47,12 +45,7 @@ noiseList, radiiList, errorMap = [], [], []
 [[co-10的error map], [13co-10的error map], ...]
 '''
 
-#"""
-# fortest
-moles_info = [('co-10',   '3b', (113, 320, 727, 906)),]
-#"""
-
-dr = 0.5 * u.arcsec # ring-shaped mask 的寬度, radius_outer += dr
+dr = 0.2 * u.arcsec # ring-shaped mask 的寬度, radius_outer += dr
 # Main
 for molename, band, cblank in moles_info:
     # --------------------------- Get Info from Cube --------------------------- #
@@ -77,13 +70,19 @@ for molename, band, cblank in moles_info:
 
 
     # --------------------------- Initilize Error Map --------------------------- #
+    #errorMap_mole = np.zeros_like(dist_mat.value)
     errorMap_mole = np.full_like(dist_mat.value, np.nan)
     '''
-    先塞一堆**沒單位的** 0, 主要是需要和 dist_mat 一樣長相的一塊板子
+    先塞一堆**沒單位的** nan, 主要是需要和 dist_mat 一樣長相的一塊板子
     待會再填值
     因為這邊沒單位, 所以後面填值的時候也不能填入有單位的值
     因為我的 noise 在算的時候是有單位的 (noise = 0 * (u.Jy/u.beam))
     所以在將 noise 填入 errorMap_mole 的時候要先除掉單位 (noise.value)
+
+    撇掉單位的好處是 imshow() 不會抽風, 算是誤打誤撞了
+
+    題外話:
+    co(1-0) 外面會有一圈 0, 他媽的那個 cube 怎麼切怎麼炸
     '''
 
 
@@ -93,7 +92,7 @@ for molename, band, cblank in moles_info:
     # ring-shaped mask's parameters
     radiiList_mole = [] # initilize
     radius_inner = 0 * u.arcsec 
-    radius_outer = 0.5 * u.arcsec # 第一次是內圈為 0, 外圈 1個dr arcsec 的圓形
+    radius_outer = 0.2 * u.arcsec # 第一次是內圈為 0, 外圈 1個dr arcsec 的圓形
 
     while radius_outer < fov_r: # 兩個單位都是角秒
         radiiList_mole.append((radius_inner.copy(), radius_outer.copy())) # tuple = (內徑, 外徑)
@@ -108,8 +107,7 @@ for molename, band, cblank in moles_info:
 
 
     # ----------------------------- Fill a Ring of Error Map ----------------------------- #
-        #errorMap_mole[ringMask] = noiseList_mole[-1].value # 當前這圈(ringMask) 填入最新的(index = -1)一圈噪音, 撇掉單位
-        errorMap_mole[ringMask] = noise / len(cblank)
+        errorMap_mole[ringMask] = noiseList_mole[-1].value # 當前這圈(ringMask) 填入最新的(index = -1)一圈噪音, 撇掉單位
         '''
         欸幹這超扯, 布林索引, 就像是真的 mask 一樣
         ringMask 是一個布林矩陣, think it as a matrix that only inside the "ring" is True, else Flase.
@@ -145,20 +143,17 @@ for molename, band, cblank in moles_info:
     errorMap.append(errorMap_mole)
     print(f"{molename}'s error map was done :)")
 
-
-print(radiiList)
 # /Main
 if len(radiiList) == len(moles_info) and len(noiseList) == len(moles_info) and len(errorMap) == len(moles_info):
     print('At least no BIG problem (?)')
 
-
 # Plot
-'''
 fig, ax = plt.subplots(2, 3, figsize=(10, 6)) # 不管怎麼調都是一個醜樣
 ax_flat = ax.flatten() # 壓成 1d 這樣可以用洄圈, 之前慣用的寫法
-'''
-# 先試試看這個
-plt.imshow(errorMap[0], origin='lower', cmap='gray', vmin=0, vmax=np.nanmax(errorMap[0])) # 先看 co-10 的 error map
-plt.colorbar(label='Noise level (Jy/beam)') # colorbar 的 label
-plt.title('Error Map of co-10 error map')
+for i in range(len(moles_info)):
+    subplot = ax_flat[i].imshow(errorMap[i], origin='lower', cmap='gray', vmin=0, vmax=np.nanmax(errorMap[i]))
+    fig.colorbar(subplot, ax=ax_flat[i])
+    ax_flat[i].set_title(f"{moles_info[i][0]}'s error map")
+
+plt.tight_layout() # 神奇小魔法
 plt.show()
