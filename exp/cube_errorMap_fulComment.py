@@ -3,6 +3,8 @@
 '''
 Make the error map of datacubes, which had been cropped by CASA ({projectRoot}/data/alma_cube/cropped_cube)
 ever ring of **dr** have different noise level...?
+
+會噴一些 RuntimeWarning, 但好像沒什麼關係?
 '''
 
 from astropy import units as u
@@ -47,7 +49,7 @@ noiseList, radiiList = [], []
 '''
 
 # Main
-dr = 0.5 # unit=arcsec. ring-shaped mask 的寬度, radius_outer += dr
+dr = 0.5* u.arcsec # ring-shaped mask 的寬度, radius_outer += dr
 
 for molename, band, cblank in moles_info:
     # load the cube
@@ -74,18 +76,14 @@ for molename, band, cblank in moles_info:
 
     # ring-shaped mask's parameters
     radiiList_mole = [] # initilize
-    '''
     radius_inner = 0 * u.arcsec 
-    radius_outer = 1 * u.arcsec 
-    '''
-    radius_inner = 0
-    radius_outer = 1 # 第一次是內圈為0, 外圈 1 arcsec 的圓形
+    radius_outer = 1 * u.arcsec # 第一次是內圈為 0, 外圈 1 arcsec 的圓形
 
     # for each molecule
-    while radius_outer < fov_r.value:
-        radiiList_mole.append((radius_inner, radius_outer)) # tuple = (內徑, 外徑), 這邊 dimless 但單位是 arcsec
+    while radius_outer < fov_r:
+        radiiList_mole.append((radius_inner, radius_outer)) # tuple = (內徑, 外徑)
         
-        ringMask = (dist_mat.value > radius_inner) and (dist_mat.value <= radius_outer) # 區間內標示為 True
+        ringMask = (dist_mat > radius_inner) & (dist_mat <= radius_outer) # 區間內標示為 True, use "&" rather than "and".
         cube_masked = cube.with_mask(ringMask)
         noise = 0 * (u.Jy/u.beam) # 歸零，放個單位
         for c in cblank:
