@@ -31,11 +31,7 @@ moles_info = [('co-10',   '3b', (113, 320, 727, 906)),
               ('c18o-21', '6a', (65, 275, 1043, 1200)),
               ]
 '''
-# test
-moles_info = [('co-10',   '3b', (113, 320, 727, 906)),
-              ]
-print(len(moles_info))
-noiseList, radiiList = [], []
+noiseList, radiiList, errorMap = [], [], []
 '''
 # noiseList
 [[co-10每個 ring 中的噪音], [13co-10每個 ring 中的噪音], [c18o-10每個 ring 中的噪音], ...]
@@ -46,40 +42,52 @@ noiseList, radiiList = [], []
  [(c18o-10第1個ring的內徑, 外徑), (c18o-10第2個ring的內徑, 外徑), ...],
  ...
 ]
+# errorMap
+[[co-10的error map], [13co-10的error map], ...]
 '''
 
-# Main
-dr = 0.5* u.arcsec # ring-shaped mask 的寬度, radius_outer += dr
+#"""
+# fortest
+moles_info = [('co-10',   '3b', (113, 320, 727, 906)),]
+#"""
 
+
+dr = 0.5* u.arcsec # ring-shaped mask 的寬度, radius_outer += dr
+# Main
 for molename, band, cblank in moles_info:
-    # load the cube
+    # --------------------------- Get Info from Cube --------------------------- #
     cube = SpectralCube.read(f'{dataPath}/cube_Band{band}_{molename}_smooth3.2as.fits')
     print(f'cube_Band{band}_{molename}_smooth3.2as.fits was loaded.')
 
-    # 以中心為中心畫圓
+    # Find the **Center** of the Observation
     ra_crval  = cube.wcs.wcs.crval[0] * u.deg
     dec_crval = cube.wcs.wcs.crval[1] * u.deg
-    dec_cr_rad = dec_crval.to(u.rad) # 用來修正投影用的, 因為 Circinus 有點高緯
+    dec_cr_rad = dec_crval.to(u.rad) # 用來修正投影用的所以單位是 rad, 需要修正因為 Circinus 有點高緯
 
+    # Length-related and Distance Matrix (每點與中心的距離矩陣)
     dec_mat, ra_mat = cube.spatial_coordinate_map
     '''# .spatial_coordinate_map 回傳 dec, ra 矩陣, 他媽的什麼爛順序, 
     單位是 deg, *_crval 系列也都是 deg 為單位, 所以等下可以運算每點與中心(*_crval)距離
     '''
-
-    # 每點與中心的距離矩陣
     delta_dec = (dec_mat - dec_crval) # 跨越緯線的長度(在兩條緯線之間移動)不會變, 所以就一般一般
     delta_ra = (ra_mat - ra_crval) * np.cos(dec_cr_rad) # 跨越經線的長度, 乘上中心點的緯度 (仰角) 作為修正, 因為高緯的倆驚現距離短er
     dist_mat = np.sqrt(delta_ra**2 + delta_dec**2).to(u.arcsec) # 就是計算距離, 一次性算完
  
     fov_r = (0.5*(dec_mat.max() - dec_mat.min())).to(u.arcsec) # field of view 的 ridius 的意思
-    noiseList_mole = [] # 次拋, 裝的是一款 mole 在各種遮罩下的噪音
 
+
+    # --------------------------- Initilize Error Map --------------------------- #
+    errorMap_mole = np.zeros_like(dist_mat) * (u.Jy/u.beam) # 先塞一堆 0, 待會再填值
+
+
+    # -------------- Measure Noise (std.) in Each Ring-Shaped Mask -------------- #
+    noiseList_mole = [] # 次拋, 裝的是一款 mole 在各種遮罩下的噪音
+    
     # ring-shaped mask's parameters
     radiiList_mole = [] # initilize
     radius_inner = 0 * u.arcsec 
     radius_outer = 1 * u.arcsec # 第一次是內圈為 0, 外圈 1 arcsec 的圓形
 
-    # for each molecule
     while radius_outer < fov_r:
         radiiList_mole.append((radius_inner, radius_outer)) # tuple = (內徑, 外徑)
         
@@ -88,21 +96,38 @@ for molename, band, cblank in moles_info:
         noise = 0 * (u.Jy/u.beam) # 歸零，放個單位
         for c in cblank:
             noise += np.nanstd(cube_masked[c].filled_data[:])
-            '''# 他媽的這邊我用超久
-            cube[c] 就是 cube 的第c個 channel
-            filled_data[:] 像是取出所有值並轉職成一維陣列？
-            因為充滿 nan 所以要用 np.nanstd()
-            '''
+
         noiseList_mole.append(noise / len(cblank)) # 4 個空白切片的平均...
 
-        # next ring
+
+    # ----------------------------- Fill a Ring of Error Map ----------------------------- #
+        errorMap_mole[ringMask] = noiseList_mole[-1] # 當前這圈(ringMask) 填入最新的(index = -1)一圈噪音
+        '''
+        欸幹這超扯, 布林索引, 就像是真的 mask 一樣
+        ringMask 是一個布林矩陣, think it as a matrix that only inside the "ring" is True, else Flase.
+        errorMap_mole[ringMask] 就是寫 True 的地方做接下來的動作(填值), 其餘維持原樣(原本是 zeros_like matrix...是否應該改成 nan?) 
+        '''
+        ### next ring ###
         radius_inner = radius_outer
         radius_outer += dr
 
+    ### next molecule ###
+    radiiList.append(radiiList_mole) # 還是把東西存下來吧
     noiseList.append(noiseList_mole)
-    radiiList.append(radiiList_mole)
-    print(f'Noise statistics for {molename} was done :)')
+    errorMap.append(errorMap_mole)
+    print(f'Error map of {molename} was done :)')
+
+# /Main
+if len(radiiList) == len(moles_info) and len(noiseList) == len(moles_info) and len(errorMap) == len(moles_info):
+    print('At least no BIG problem (?)')
 
 
-if len(noiseList) == len(moles_info):
-    print('At least no BIG problem?')
+# Plot
+'''
+fig, ax = plt.subplots(2, 3, figsize=(10, 6)) # 不管怎麼調都是一個醜樣
+ax_flat = ax.flatten() # 壓成 1d 這樣可以用洄圈, 之前慣用的寫法
+'''
+# 先試試看這個
+plt.imshow(errorMap[0], origin='lower', cmap='viridis') # 先看 co-10 的 error map
+plt.title('Error Map of co-10 error map')
+plt.show()
