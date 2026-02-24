@@ -1,8 +1,10 @@
 # You should put this script on feifei,
 # because of the hard-coded folder path
+# use matplotlib<3.8 (3.7.5 here) to avoid "ImportError: cannot import name 'AnchoredEllipse' from 'mpl_toolkits.axes_grid1.anchored_artists'"
 '''
 Make the error map of datacubes, which had been cropped by CASA ({projectRoot}/data/alma_cube/cropped_cube)
-ever ring of **dr** have different noise level...?
+Ever ring of **dr** have different noise level.
+Error map is for modeling.
 
 多虧我大便一般的寫法, 跑這個腳本需要頗多時間哈哈屁眼
 
@@ -26,6 +28,8 @@ dataPath = f'{projectRoot}/data/alma_cube/smoothed_cube'
 
 # (mole_fileName, band_fileName, (blankChannel))
 # mole_info 和 cube_info 要分開份是因為這樣才可以點菜!
+moles_info = [('co-10',   '3b', (113, 320, 727, 906)),]
+'''
 moles_info = [('co-10',   '3b', (113, 320, 727, 906)),
               ('13co-10', '3a', (56, 316, 721, 900)),
               ('c18o-10', '3a', (182, 475, 893, 1094)),
@@ -33,16 +37,16 @@ moles_info = [('co-10',   '3b', (113, 320, 727, 906)),
               ('13co-21', '6a', (41, 257, 1012, 1544)),
               ('c18o-21', '6a', (65, 275, 1043, 1200)),
               ]
-
+'''
 cube_info = {} 
 '''
 cube_info =  {[mole1], [mole2], ...}
 字典可以以文字為索引
 其中 cube_info[molen] = {
         "cube":  cube, # cube 本人
-        "wcs":   cube.wcs.celestial,              # error map 的座標物件, 所以是二維
-        "rmask": ringMaskList_mole, # 直接存 mask 了
-        "emap":  erreoMap_mole,     # error map array (把 noise 填入 ring or 初始化的東西)
+        "wcs2":   cube.wcs.celestial,  # error map 的座標物件, 所以是二維
+        "rmask": ringMaskList_mole,    # 直接存 mask 了
+        "emap":  erreoMap_mole,        # error map array (把 noise 填入 ring or 初始化的東西)
     }
 雙層字典的概念, 方便以鍵取值
 '''
@@ -87,7 +91,7 @@ for molename, band, _ in moles_info:
     # Save Cube Information and Ring Masks into dict.
     cube_info[molename] = {
         "cube":  cube, # cube 本人
-        "wcs":   cube.wcs.celestial, # 要給 erroeMap 用的座標所以是二維, cube.wcs 有三維的樣子
+        "wcs2":   cube.wcs.celestial, # 要給 erroeMap 用的座標所以是二維, cube.wcs 有三維的樣子
         "rmask": ringMaskList_mole,
         "emap":  np.full_like(dist_mat.value, np.nan),
     }
@@ -119,16 +123,14 @@ for molename, _, cblank in moles_info:
     # Go to Next Molecule :)
 
 # ------------------------------- Plot Error Maps ------------------------------- #
-fig, ax = plt.subplots(2, 3, figsize=(10, 6))
-ax_flat = ax.flatten() # 壓成 1d 這樣可以用洄圈, 之前慣用的寫法
-
-i = 0
+fig = plt.figure()
+fig_pos = 231
 for molename, _, _ in moles_info:
     errorMap = cube_info[molename]['emap']
-    im = ax_flat[i].imshow(errorMap, origin='lower', cmap='gray', vmin=0, vmax=np.nanmax(errorMap))
-    fig.colorbar(im, ax=ax_flat[i]) # 他媽的有夠雞巴醜拜託改一下好不好, 一根在那邊是三小
-    ax_flat[i].set_title(f"{molename}'s error map")
-    i += 1 # 有點醜但就這樣吧!
+    plt.subplot(fig_pos, projection=cube_info[molename]['wcs2'])
+    plt.imshow(errorMap, origin='lower', cmap='gray', vmin=0, vmax=np.nanmax(errorMap))
+    plt.title(f"{molename}'s error map")
+    fig_pos += 1 # 超噁爛超危險寫法但我有點懶得改了啦哈哈屁眼
 
 plt.tight_layout() # 神奇小魔法
 plt.show()
