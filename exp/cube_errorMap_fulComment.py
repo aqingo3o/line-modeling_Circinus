@@ -12,6 +12,7 @@ Error map is for modeling.
 再開一個新串列我真的會擔心索引爆掉
 '''
 
+from astropy.io import fits
 from astropy import units as u
 import matplotlib.pyplot as plt
 import numpy as np
@@ -28,8 +29,6 @@ dataPath = f'{projectRoot}/data/alma_cube/smoothed_cube'
 
 # (mole_fileName, band_fileName, (blankChannel))
 # mole_info 和 cube_info 要分開份是因為這樣才可以點菜!
-moles_info = [('co-10',   '3b', (113, 320, 727, 906)),]
-'''
 moles_info = [('co-10',   '3b', (113, 320, 727, 906)),
               ('13co-10', '3a', (56, 316, 721, 900)),
               ('c18o-10', '3a', (182, 475, 893, 1094)),
@@ -37,7 +36,6 @@ moles_info = [('co-10',   '3b', (113, 320, 727, 906)),
               ('13co-21', '6a', (41, 257, 1012, 1544)),
               ('c18o-21', '6a', (65, 275, 1043, 1200)),
               ]
-'''
 cube_info = {} 
 '''
 cube_info =  {[mole1], [mole2], ...}
@@ -122,14 +120,30 @@ for molename, _, cblank in moles_info:
     print(f"{molename}'s error map was done :)")
     # Go to Next Molecule :)
 
+# --------------------------------- Save as FITS -------------------------------- #
+for molename, _, _  in moles_info:
+    fitsOut = f'{projectRoot}/data/errormap/emap_{molename}_smooth3.2as.fits'
+    errorMap = cube_info[molename]['emap']
+    # Write Header
+    header = cube_info[molename]['wcs2'].to_header() # Header 中放入座標資訊(轉成 header 格式的 wcs2)
+    header['OBJECT'] = 'Circinus_galaxy' # Extra Info for Header
+    header['BUNIT'] = 'Jy/beam'
+    header['COMMENT'] = 'Radial ring-shaped noise map, by aqing via SpectralCube, numpy'
+    fits.writeto(fitsOut, errorMap, header, overwrite=True)
+print('All error maps are saved as FITS.')
+
+
 # ------------------------------- Plot Error Maps ------------------------------- #
-fig = plt.figure()
+fig = plt.figure(figsize=(15, 11))
 fig_pos = 231
 for molename, _, _ in moles_info:
     errorMap = cube_info[molename]['emap']
     plt.subplot(fig_pos, projection=cube_info[molename]['wcs2'])
     plt.imshow(errorMap, origin='lower', cmap='gray', vmin=0, vmax=np.nanmax(errorMap))
+    plt.xlabel('RA')
+    plt.ylabel('Dec')
     plt.title(f"{molename}'s error map")
+    plt.colorbar(label='Noise (Jy/beam)', fraction=0.046, pad=0.04) # pad 是 bar 與圖的間距; frac 是神奇小數字
     fig_pos += 1 # 超噁爛超危險寫法但我有點懶得改了啦哈哈屁眼
 
 plt.tight_layout() # 神奇小魔法
