@@ -23,7 +23,7 @@ dataPath = f'{projectRoot}/data/alma_cube/smoothed_cube'
 emapPath = f'{projectRoot}/data/errormap'
 
 # (mole_fileName, band_fileName, (blankChannel))
-moles_info = [('co-10',   '3b', (113, 320, 727, 906)),
+moles_info = [('co-10',   '3b', (15, 86, 445, 483)),
               ('13co-10', '3a', (56, 316, 721, 900)),
               ('c18o-10', '3a', (182, 475, 893, 1094)),
               ('co-21',   '6a', (86, 327, 1036, 1323)),
