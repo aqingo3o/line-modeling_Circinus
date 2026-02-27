@@ -23,7 +23,8 @@ dataPath = f'{projectRoot}/data/alma_cube'
 
 # Parameters
 kernel = 'gauss'
-targetBeam = {'major': '3.2arcsec', 'minor': '3.2arcsec', 'pa': '0deg'} # 大一點點
+beamSize = 3.2 # arcsec
+targetBeam = {'major': f'{beamSize}arcsec', 'minor': f'{beamSize}arcsec', 'pa': '0deg'} # set as round beam
 wanted = [  # (mole, band, restFrequency(Hz))
     ('13co-10', '3a'), ('c18o-10', '3a'), ('co-10', '3b'),
     ('13co-21', '6a'), ('c18o-21', '6a'), ('co-21', '6a'),
@@ -32,7 +33,7 @@ wanted = [  # (mole, band, restFrequency(Hz))
 # Smoothing
 for mole, band in wanted:
     pathIN = f'{dataPath}/cropped_cube/cube_Band{band}_{mole}_cropped.fits'
-    pathOUT = f'{dataPath}/smoothed_cube/cube_Band{band}_{mole}_smooth3.2as.fits'
+    pathOUT = f'{dataPath}/smoothed_cube/cube_Band{band}_{mole}_smooth{beamSize}as.fits'
 
     importfits(fitsimage=pathIN, imagename='casaIN.im', overwrite=True)
     print('Successfully import a datacube.')
