@@ -76,6 +76,7 @@ for fig_idx, (molename, band, f0, freqrange, _) in enumerate(moles_info):
 
     # Plot the Spectrum
     ax[fig_idx].plot(velo_axis, specData, lw=1, color='k')
+    ax[fig_idx].axhline(0, lw=0.5, linestyle='--', color='k') # 零線
     ax[fig_idx].set_title(f'{molename} spectrum pix({samplePix}, {samplePix})')
     if fig_idx > 3:
         ax[fig_idx].set_xlabel(f'Radio Velocity ({velo_axis.unit})')
