@@ -43,6 +43,7 @@ Nsigma = [3.0, 3.5, 4.0, 4.5, 5.0] # masked 掉幾個 sigma 的「幾」
 過多的 sigma 對於像是 co-10 這種強的要命的譜線沒什麼差
 但反正腳本算起來也快就一起了（失去語言功能）
 '''
+
 # Main
 for molename, band, f0, freqrange, noise in moles_info:
     # Load the Cube
@@ -71,8 +72,6 @@ for molename, band, f0, freqrange, noise in moles_info:
         mom0.write(f'{mom0Path}/mom0_{molename}_smooth3.2as_{n}sigma.fits', overwrite=True)
         print(f"{molename}'s moment zero map (masked {n} sigma) was saved as FITS.")
 
-print(':))')
-
 # Spectral Figure
 fig, ax2 = plt.subplots(3, 2, figsize=(12, 8))
 ax = ax2.flatten()
@@ -94,6 +93,7 @@ for fig_idx, (molename, band, f0, freqrange, _) in enumerate(moles_info):
 
     # Plot the Spectrum
     ax[fig_idx].plot(velo_axis, specData, lw=1, color='k')
+    ax[fig_idx].axhline(0, lw=0.5, linestyle='--', color='k') # 零線
     ax[fig_idx].set_title(f'{molename} spectrum pix({samplePix}, {samplePix})')
     if fig_idx > 3:
         ax[fig_idx].set_xlabel(f'Radio Velocity ({velo_axis.unit})')
