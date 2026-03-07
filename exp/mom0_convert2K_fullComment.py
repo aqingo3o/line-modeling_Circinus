@@ -1,5 +1,6 @@
 # You MUST put this script on feifei,
 # because of the hard-coded folder path
+# 因為差勁的算法, 所以運行速度極慢
 '''
 Convert the flux density unit from Jy/beam to Kelvin
 2 = to ;)
@@ -11,6 +12,9 @@ Tech ref:
 - the equivakency -- brightness_temperature():
   https://docs.astropy.org/en/stable/api/astropy.units.brightness_temperature.html#astropy.units.brightness_temperature
 - <Tools>: 並無, 因爲老子根他媽本看不懂
+
+** 這邊用了雙層回圈進行計算, 非常之缺乏效率
+   比較優良的寫法請見 scripts/
 '''
 
 from astropy.io import fits
@@ -82,6 +86,7 @@ for i in mom0_fn:
 smoothTO = 3.2 # 因為之後可能會 smooth 到不同 beam size... 早該這麼幹了
 fwhm2sigma = 1. / (8 * np.log(2))**0.5 # Gaussian beam 的常數
 z = 0.001448 * u.dimensionless_unscaled # red shift of the Circinus
+count = 1 # 顯示計數用的, 因為這個要跑 30 分鐘以上
 
 # Main
 for molename, nsig in files_info:
@@ -98,7 +103,6 @@ for molename, nsig in files_info:
     OmegaB = (2 * np.pi) * (bmaj * fwhm2sigma) * (bmin * fwhm2sigma) # ()是好看用的
     
     # Converting
-    count = 1 # 顯示計數用的, 因為這個要跑 30 分鐘以上
     print(f"Converting intensity unit of {molename}'s mom0...")
     print('It takes time, pleasse wait...') # 幹這真的要一段時間欸, 但不是很想寫平行處理
     for x in range(mom0_Jb.shape[0]):
@@ -113,7 +117,7 @@ for molename, nsig in files_info:
     fitsOut = f'{mom0Path}/mom0_unitK_{molename}_smooth{smoothTO}as_{nsig}sigma.fits'
     # Write(revise) Header
     header['OBJECT'] = 'Circinus Galaxy'
-    header['BUNIT'] = 'Kelvin'
+    header['BUNIT'] = 'Kelvin km/s' # 大便般的格式
     header['COMMENT'] = 'Convert the intensity unit from Jy/beam to Kevlin, by qing'
     fits.writeto(fitsOut, mom0_K, header, overwrite=True) # 依序填入: 檔名、內餡(圖的部分)、標頭
 
