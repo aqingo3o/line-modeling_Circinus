@@ -15,9 +15,7 @@ Tech ref:
 
 from astropy.io import fits
 from astropy import units as u
-from astropy.wcs import WCS
 import glob
-import matplotlib.pyplot as plt
 import numpy as np
 import warnings
 
@@ -79,50 +77,45 @@ for i in mom0_fn:
 - mom0_info:  大字典包小字典, 儲存 FITS 開出來的資料, 第一層索引是 [f'{molename}_{nsig}'], 
               i.e. co-21_3.5, nsig 代表積分時 masked 掉了幾個 sigma
 '''
-files_info = [('co-10', '3.0')]
 
-
-# Get Data from mom0s
+# Constants
+smoothTO = 3.2 # 因為之後可能會 smooth 到不同 beam size... 早該這麼幹了
 fwhm2sigma = 1. / (8 * np.log(2))**0.5 # Gaussian beam 的常數
 z = 0.001448 * u.dimensionless_unscaled # red shift of the Circinus
 
-mom0K_info = {} # unit: Kelvin 的資料集
+# Main
 for molename, nsig in files_info:
-    hdul = fits.open(f'{mom0Path}/mom0_{molename}_smooth3.2as_{nsig}sigma.fits') # astropy.io
+    # Get Data from mom0s
+    hdul = fits.open(f'{mom0Path}/mom0_{molename}_smooth{smoothTO}as_{nsig}sigma.fits') # astropy.io
 
-    mom0_Jb = hdul[0].data.squeeze() # Jy/beam 簡稱他嗎雞ㄅ
+    mom0_Jb = hdul[0].data.squeeze() # Jy/beam 簡稱他嗎雞ㄅ, 這個是可以 imshow() 的那個部分, ssp 時期好像叫他 ima
     mom0_K = np.full_like(mom0_Jb, np.nan) # 先畫一張空白的圖
 
     header = hdul[0].header
     f0 = header['RESTFRQ'] * u.Hz
     freq = f0 / (1+z) # shifted frequency
     bmaj, bmin = header['BMAJ'] * u.deg, header['BMAJ'] * u.deg # fwhm 的部分
-    # !!! 不知道這邊要不要用 arcsec 喔喔喔
     OmegaB = (2 * np.pi) * (bmaj * fwhm2sigma) * (bmin * fwhm2sigma) # ()是好看用的
     
+    # Converting
+    count = 1 # 顯示計數用的, 因為這個要跑 30 分鐘以上
+    print(f"Converting intensity unit of {molename}'s mom0...")
+    print('It takes time, pleasse wait...') # 幹這真的要一段時間欸, 但不是很想寫平行處理
     for x in range(mom0_Jb.shape[0]):
         for y in range(mom0_Jb.shape[1]):
             fluxD = mom0_Jb[x, y] * (u.Jy/OmegaB)
             T_B = fluxD.to(u.K, equivalencies=u.brightness_temperature(freq))
             mom0_K[x, y] = T_B.value
-        print('.')
+    print(f'Finish the convertion! ({count}/{len(files_info)})')
+    count += 1
 
-'''
-靠北值對了但是不知道為什麼有點鏡像
-'''
-plt.figure()
-plt.imshow(mom0_Jb)
-plt.figure()
-plt.imshow(mom0_K)
+    # Save as FITS
+    fitsOut = f'{mom0Path}/mom0_unitK_{molename}_smooth{smoothTO}as_{nsig}sigma.fits'
+    # Write(revise) Header
+    header['OBJECT'] = 'Circinus Galaxy'
+    header['BUNIT'] = 'Kelvin'
+    header['COMMENT'] = 'Convert the intensity unit from Jy/beam to Kevlin, by qing'
+    fits.writeto(fitsOut, mom0_K, header, overwrite=True) # 依序填入: 檔名、內餡(圖的部分)、標頭
 
-
-"""
-    # 存入資料字典，這樣是雙層字典，方便以鍵取值
-    mom0_info[f'{molename}_{nsig}'] = {
-        "hdul": hdul,
-        "header": hdul[0].header,
-        "data": hdul[0].data.squeeze(),
-        "wcs": WCS(hdul[0].header, naxis=2)
-    '''
-"""
-plt.show()
+print()
+print('All mom0s are done and saved as FITS with file name "mom0_unitK_*.fits":)')
