@@ -10,7 +10,7 @@ Tech ref:
   https://docs.astropy.org/en/stable/units/equivalencies.html#built-in-equivalencies
 - the equivakency -- brightness_temperature():
   https://docs.astropy.org/en/stable/api/astropy.units.brightness_temperature.html#astropy.units.brightness_temperature
-- <Tools>: 並無
+- <Tools>: 並無, 因爲老子根他媽本看不懂
 '''
 
 from astropy.io import fits
@@ -18,6 +18,7 @@ from astropy import units as u
 from astropy.wcs import WCS
 import glob
 import matplotlib.pyplot as plt
+import numpy as np
 import warnings
 
 # 因為噴一堆東西有點煩煩的
@@ -74,23 +75,54 @@ for i in mom0_fn:
 
 '''# 容器總結 (有用到的)
 - mom0_fn:    字串餡兒的串列, 從 folder 裡讀未轉換亮度單位的 mom0.fits 檔名, 
-- files_info: 大串列包小元組, 切分後的檔名關鍵字, 以 tuple 儲存
+- files_info: 大串列包小元組, 切分後的檔名關鍵字, 以 tuple 儲存, i.e. [('co-10', '3.0'), (13co-21, '4.5'), ...]
 - mom0_info:  大字典包小字典, 儲存 FITS 開出來的資料, 第一層索引是 [f'{molename}_{nsig}'], 
               i.e. co-21_3.5, nsig 代表積分時 masked 掉了幾個 sigma
 '''
+files_info = [('co-10', '3.0')]
 
-# Convertion
-mom0_info = {}
+
+# Get Data from mom0s
+fwhm2sigma = 1. / (8 * np.log(2))**0.5 # Gaussian beam 的常數
+z = 0.001448 * u.dimensionless_unscaled # red shift of the Circinus
+
+mom0K_info = {} # unit: Kelvin 的資料集
 for molename, nsig in files_info:
     hdul = fits.open(f'{mom0Path}/mom0_{molename}_smooth3.2as_{nsig}sigma.fits') # astropy.io
 
+    mom0_Jb = hdul[0].data.squeeze() # Jy/beam 簡稱他嗎雞ㄅ
+    mom0_K = np.full_like(mom0_Jb, np.nan) # 先畫一張空白的圖
+
+    header = hdul[0].header
+    f0 = header['RESTFRQ'] * u.Hz
+    freq = f0 / (1+z) # shifted frequency
+    bmaj, bmin = header['BMAJ'] * u.deg, header['BMAJ'] * u.deg # fwhm 的部分
+    # !!! 不知道這邊要不要用 arcsec 喔喔喔
+    OmegaB = (2 * np.pi) * (bmaj * fwhm2sigma) * (bmin * fwhm2sigma) # ()是好看用的
+    
+    for x in range(mom0_Jb.shape[0]):
+        for y in range(mom0_Jb.shape[1]):
+            fluxD = mom0_Jb[x, y] * (u.Jy/OmegaB)
+            T_B = fluxD.to(u.K, equivalencies=u.brightness_temperature(freq))
+            mom0_K[x, y] = T_B.value
+        print('.')
+
+'''
+靠北值對了但是不知道為什麼有點鏡像
+'''
+plt.figure()
+plt.imshow(mom0_Jb)
+plt.figure()
+plt.imshow(mom0_K)
+
+
+"""
     # 存入資料字典，這樣是雙層字典，方便以鍵取值
     mom0_info[f'{molename}_{nsig}'] = {
         "hdul": hdul,
         "header": hdul[0].header,
         "data": hdul[0].data.squeeze(),
         "wcs": WCS(hdul[0].header, naxis=2)
-    }
-'''
-結果寫到這邊已經用盡全力了
-'''
+    '''
+"""
+plt.show()
