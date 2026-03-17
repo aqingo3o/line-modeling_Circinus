@@ -34,8 +34,9 @@ noiseList, radiiList = [], []
 # Main
 radii_step = 0.5 * u.arcsec
 for molename, band, cblank in moles_info:
-    cube = SpectralCube.read(f'{dataPath}/cube_Band{band}_{molename}_smoothTO13co-10.fits')
-    print(f'cube_Band{band}_{molename}_smoothTO13co-10.fits was loaded.')
+    #cube = SpectralCube.read(f'{dataPath}/cube_Band{band}_{molename}_cropped.fits') 
+    cube = SpectralCube.read(f'{dataPath}/cube_Band{band}_{molename}_smooth3.2as.fits')
+    print(f'cube_Band{band}_{molename}_smooth3.2as.fits was loaded.')
 
     # 以中心為中心畫圓
     ra_crval  = cube.wcs.wcs.crval[0] * u.deg
@@ -74,10 +75,6 @@ for molename, band, cblank in moles_info:
 if len(noiseList)==6:
     print('At least no BIG problem?')
 
-"""
-# 應該寫點能把資料存下來的不然有點浪費時間
-"""
-
 # plot
 # 非常髒的 顧前不顧後的寫法
 fig, ax = plt.subplots(2, 3, figsize=(10, 6)) # 不管怎麼調都是一個醜樣
@@ -94,4 +91,10 @@ for i in range(len(moles_info)):
         ax_flat[i].set_xlabel('radius_mask (arcsec)')
 
 plt.tight_layout() # 神奇妙妙工具
+
+# Save the figure
+#fig.savefig(f'{projectRoot}/products/noiseStat_cropped.png', dpi=300, bbox_inches='tight')
+fig.savefig(f'{projectRoot}/products/figure/fig_noiseStat_smooth3.2as.png', dpi=300, bbox_inches='tight')
+print('Figure was saved.')
+
 plt.show()

@@ -25,7 +25,7 @@ warnings.filterwarnings('ignore', message='.*PV2.*')
 
 # Path
 projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus' # feifei
-mom0Path = f'{projectRoot}/data/mom0'
+mom0Path = f'{projectRoot}/data/mom0_map'
 
 # Read Mom0 Files **Name**
 '''

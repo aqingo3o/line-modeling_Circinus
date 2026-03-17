@@ -20,7 +20,7 @@ warnings.filterwarnings('ignore', message='Degrees of freedom <= 0 for slice')
 # Path
 projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus'
 dataPath = f'{projectRoot}/data/alma_cube/smoothed_cube'
-emapPath = f'{projectRoot}/data/errormap'
+emapPath = f'{projectRoot}/data/error_map'
 
 # (mole_fileName, band_fileName, (blankChannel))
 moles_info = [('co-10',   '3b', (15, 86, 445, 483)),
@@ -113,4 +113,5 @@ for molename, _, _ in moles_info:
     fig_pos += 1 # 超噁爛超危險寫法但我有點懶得改了啦哈哈屁眼
 
 plt.tight_layout()
+plt.savefig(f'{projectRoot}/products/figure/fig_errorMap.png', dpi=300)
 plt.show()
