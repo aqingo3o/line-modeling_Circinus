@@ -1,4 +1,4 @@
-# Can be run on Lab machine(ubuntu) or feofei(macOS)
+# Can be run on Lab machine(ubuntu) or feifei(macOS)
 # Auto set the folder structure
 # You MUST put this script under your project root (i.e. ~/line-modeling_Circinus/thisScript.py)
 # 對如果要把這個腳本放進 projectRoot/scripts/ 的話, 請跑完之後再放, 雖然很怪洨但先這樣吧?
@@ -339,11 +339,9 @@ mole_info = [  # molespiece, (initial flux array's shape)
 flux_model = {}
 
 # ---------------------- Construct 3D - 5D flux models (initial shape) ---------------------------- #
-for molespiece, iniShape in mole_info: # Initialize flux array
+for molesp, iniShape in mole_info: # Initialize flux array
     for t in transis:
-        flux_model[f'{molespiece}-{t}'] = {
-            "flux": np.full(iniShape, np.nan)
-        }
+        flux_model[f'{molesp}-{t}'] = {"flux": np.full(iniShape, np.nan)}
 
 for result in results: # Get FluxxxxxX, by Function radex_flux()
     k, i, j, m, n, flux_co, flux_13co, flux_c18o = result
@@ -351,14 +349,14 @@ for result in results: # Get FluxxxxxX, by Function radex_flux()
     flux_data = [flux_co, flux_13co, flux_c18o]
     mole_spiece = ['co', '13co', 'c18o'] # 這兩的 index 要對齊
 
-    for m_idx, molespiece in enumerate(mole_spiece):
+    for m_idx, molesp in enumerate(mole_spiece):
         for t_idx, t in enumerate(transis):
-            if molespiece == 'co':
-                flux_model[f'{molespiece}-{t}']["flux"][k,i,j] = flux_data[m_idx][t_idx]
-            elif molespiece == '13co':
-                flux_model[f'{molespiece}-{t}']["flux"][k,i,j,m] = flux_data[m_idx][t_idx]
-            elif molespiece == 'c18o':
-                flux_model[f'{molespiece}-{t}']["flux"][k,i,j,m,n] = flux_data[m_idx][t_idx]
+            if molesp == 'co':
+                flux_model[f'{molesp}-{t}']["flux"][k,i,j] = flux_data[m_idx][t_idx]
+            elif molesp == '13co':
+                flux_model[f'{molesp}-{t}']["flux"][k,i,j,m] = flux_data[m_idx][t_idx]
+            elif molesp == 'c18o':
+                flux_model[f'{molesp}-{t}']["flux"][k,i,j,m,n] = flux_data[m_idx][t_idx]
 '''
 保留這個東西因為這個太他媽懸吊了
 for result in results:
@@ -380,17 +378,17 @@ fluxini_time = time.time()
 print('Flux models saved.')
 
 # ---------------------------------- Construct 5D Flux Models ---------------------------------- #
-for molespiece in mole_spiece: # reshape the initial flux model to 5d
+for molesp, _ in mole_info: # reshape the initial flux model to 5d
     for t in transis:
-        theFlux = flux_model[f'{molespiece}-{t}']["flux"]
-        if molespiece == 'co':
+        theFlux = flux_model[f'{molesp}-{t}']["flux"]
+        if molesp == 'co':
             cache = np.repeat(theFlux[:,:,:, np.newaxis], num_X12to13, axis=3) # used to be 'temp'
             theFlux_5d = np.repeat(cache[:,:,:,:, np.newaxis], num_X13to18, axis=4)
-        elif molespiece == '13co':
+        elif molesp == '13co':
             theFlux_5d = np.repeat(theFlux[:,:,:,:, np.newaxis], num_X13to18, axis=4)
-        elif molespiece == 'c18o':
+        elif molesp == 'c18o':
             theFlux_5d = theFlux
-        flux_model[f'{molespiece}-{t}']["flux_5d"] = theFlux_5d
+        flux_model[f'{molesp}-{t}']["flux_5d"] = theFlux_5d
 
 for molename in flux_model.keys(): # Save "flux_5d" into .npy
     np.save(f'{npyPath}/flux_{model_5d}_{molename}.npy', flux_model[molename]["flux_5d"]) # (filename) modi by qing (20260317)
@@ -429,11 +427,11 @@ beam_fill = 10 ** np.arange(-1.3, 0.1, 0.1)
 beamFactor = beam_fill.reshape(1,1,1,1,1, beam_fill.shape[0]) # factor 是亂叫的
 
 # Construct 6d-flux models from 5d by adding the beam filling factor dimension
-for molespiece in mole_spiece:
+for molesp, _ in mole_info:
     for t in transis:
-        theFlux_5d = flux_model[f'{molespiece}-{t}']["flux_5d"]
+        theFlux_5d = flux_model[f'{molesp}-{t}']["flux_5d"]
         theFlux_6d = theFlux_5d.reshape(num_Nco,num_Tk,num_nH2,num_X12to13,num_X13to18,1) * beamFactor
-        flux_model[f'{molespiece}-{t}']["flux_6d"] = theFlux_6d
+        flux_model[f'{molesp}-{t}']["flux_6d"] = theFlux_6d
 
 for molename in flux_model.keys(): # Save "flux_6d" into .npy
     np.save(f'{npyPath}/flux_{model_6d}_{molename}.npy', flux_model[molename]["flux_6d"])
