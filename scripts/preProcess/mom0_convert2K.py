@@ -2,9 +2,10 @@
 # because of the hard-coded folder path
 ### from *fullComment.py, improved the algorithm.
 '''
-Convert the flux density unit from Jy/beam to Kelvin
-2 = to ;)
+Load moment0 maps (.fits) and convert the flux density unit 
+from Jy/beam to Kelvin, 2 = to ;)
 和 cube_mom0Maker.py 分開, 因為這是在 mom0 上的操作, 比較沒有 cube 的事了
+Will give mom0s in both .fits and .npy (for modeling code from Eltha 女士)
 
 Tech ref:
 - astropy.Units, Brightness Temperature and Surface Brightness Equivalency: 
@@ -25,7 +26,7 @@ warnings.filterwarnings('ignore', message='.*PV2.*')
 
 # Path
 projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus' # feifei
-mom0Path = f'{projectRoot}/data/mom0_map'
+mom0Path = f'{projectRoot}/data/mom0'
 
 # Read Mom0 Files **Name**
 '''
@@ -33,7 +34,7 @@ mom0Path = f'{projectRoot}/data/mom0_map'
 還是直接讀比較直觀吧
 '''
 mom0_fn = []
-for i in glob.glob(f'{mom0Path}/mom0_*.fits'):
+for i in glob.glob(f'{mom0Path}_map/mom0_*.fits'):
     mom0_fn.append(i[len(mom0Path)+1:])
 mom0_fn.sort()
 
@@ -52,7 +53,7 @@ z = 0.001448 * u.dimensionless_unscaled # red shift of the Circinus
 count = 1
 for molename, nsig in files_info:
     # Get Data from mom0s
-    hdul = fits.open(f'{mom0Path}/mom0_{molename}_smooth{smoothTO}as_{nsig}sigma.fits')
+    hdul = fits.open(f'{mom0Path}_map/mom0_{molename}_smooth{smoothTO}as_{nsig}sigma.fits')
 
     mom0_Jb = hdul[0].data.squeeze()
     header = hdul[0].header
@@ -64,16 +65,21 @@ for molename, nsig in files_info:
     # Converting
     cvFactor = (1 * u.Jy/OmegaB).to(u.K, equivalencies=u.brightness_temperature(freq)).value
     print(f"Converting intensity unit of {molename}'s mom0...")
-    mom0_K = mom0_Jb * cvFactor
+    mom0_K = mom0_Jb * cvFactor # matrix <3
     print(f'Finish the convertion! ({count}/{len(files_info)})')
     count += 1
 
     # Save as FITS
-    fitsOut = f'{mom0Path}/mom0_unitK_{molename}_smooth{smoothTO}as_{nsig}sigma.fits'
+    fitsOut = f'{mom0Path}_map/mom0_unitK_{molename}_smooth{smoothTO}as_{nsig}sigma.fits'
     # Write(revise) Header
     header['OBJECT'] = 'Circinus Galaxy'
     header['BUNIT'] = 'K km s-1'
     header['COMMENT'] = 'Convert the intensity unit from Jy/beam to Kevlin, by qing'
     fits.writeto(fitsOut, mom0_K, header, overwrite=True) # cannot write Quantities to file.
+
+    # Save as .npy
+    npyOut = f'{mom0Path}_npy/mom0_unitK_{molename}_smooth{smoothTO}as_{nsig}sigma.npy'
+    np.save(npyOut, mom0_K)
 print()
 print('All mom0s are done and saved as FITS with file name "mom0_unitK_*.fits":)')
+print('All mom0s are done and saved as .npy with file name "mom0_unitK_*.npy":))')
