@@ -22,10 +22,11 @@ from spectral_cube import SpectralCube
 import warnings
 
 # 因為噴一堆東西有點煩煩的
-#warnings.filterwarnings('ignore', message='.*PV2.*')
+warnings.filterwarnings('ignore', message='.*PV2.*')
 
 # ------------------------------- Path Variables ---------------------------------- #
-projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus' # feifei
+#projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus' # feifei
+projectRoot = '/home/aqing/Documents/line-modeling_Circinus' # Lab
 cubeinPath = f'{projectRoot}/data/alma_cube/smoothed_cube' # cube-in
 reprojPath = f'{projectRoot}/data/alma_cube/reprojed_cube' # reprojected
 
@@ -84,6 +85,7 @@ for molename, band in moles_info:
     '''
     for k, v in template_header_kw.items():
         new_header[k] = v
+    cube.allow_huge_operations = True
     upsample_cube = cube.reproject(new_header)
     
     # Save as FITS
