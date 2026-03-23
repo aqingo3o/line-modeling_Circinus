@@ -15,6 +15,7 @@ from spectral_cube import SpectralCube
 import warnings
 
 warnings.filterwarnings('ignore', message='.*PV2.*')
+warnings.filter
 warnings.filterwarnings('ignore', message='Degrees of freedom <= 0 for slice')
 
 # Path
@@ -31,6 +32,7 @@ moles_info = [('co-10',   '3b', (15, 86, 445, 483)),
               ('c18o-21', '6a', (65, 275, 1043, 1200)),
               ]
 cube_info = {} 
+header_ref_kw = ['BMAJ', 'BMIN', 'BPA', 'RESTFRQ']
 
 dr = 0.2 * u.arcsec
 for molename, band, _ in moles_info:
@@ -68,7 +70,8 @@ for molename, band, _ in moles_info:
     # Save Cube Information and Ring Masks into dict.
     cube_info[molename] = {
         "cube":  cube,
-        "wcs2":   cube.wcs.celestial,
+        "wcs2":  cube.wcs.celestial,
+        "header":cube.header,
         "rmask": ringMaskList_mole,
         "emap":  np.full_like(dist_mat.value, np.nan),
     }
@@ -92,11 +95,14 @@ for molename, _, _  in moles_info:
     fitsOut = f'{emapPath}/emap_{molename}_smooth3.2as.fits'
     errorMap = cube_info[molename]['emap']
     # Write Header
-    header = cube_info[molename]['wcs2'].to_header()
-    header['OBJECT'] = 'Circinus_galaxy'
-    header['BUNIT'] = 'Jy/beam'
-    header['COMMENT'] = 'Radial ring-shaped noise map, by aqing via SpectralCube, numpy'
-    fits.writeto(fitsOut, errorMap, header, overwrite=True)
+    header_ref = cube_info[molename]['header']
+    header_emap = cube_info[molename]['header'].copy()
+    for i in header_ref_kw:
+        header_emap[i] = header_ref[i]
+    header_emap['OBJECT'] = 'Circinus_galaxy'
+    header_emap['BUNIT'] = 'Jy/beam'
+    header_emap['COMMENT'] = 'Radial ring-shaped noise map, by aqing via SpectralCube, numpy'
+    fits.writeto(fitsOut, errorMap, header_emap, overwrite=True)
 print('All error maps are saved as FITS.')
 
 # ------------------------------- Plot Error Maps ------------------------------- #
