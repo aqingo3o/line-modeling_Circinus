@@ -30,13 +30,15 @@ Tech ref:
 # --------------------------------- Import Module -------------------------------- #
 from astropy.io import fits
 from astropy import units as u
+from astropy.wcs import WCS
 import glob
 import numpy as np
 from reproject import reproject_adaptive
 import warnings
 
-# 因為噴一堆東西有點煩煩的
+# ---------------------------- 因為噴一堆東西有點煩煩的 ------------------------------- #
 warnings.filterwarnings('ignore', message='.*PV2.*')
+warnings.filterwarnings('ignore', message='*FITSFixedWarning:*')
 
 # ------------------------------- Path Variables ---------------------------------- #
 projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus' # feifei
@@ -138,56 +140,47 @@ for maptype, molename, nsig in files_info:
     bmaj, bmin = header['BMAJ'] * u.deg, header['BMAJ'] * u.deg # fwhm 的部分
     OmegaB = (2 * np.pi) * (bmaj * fwhm2sigma) * (bmin * fwhm2sigma) # ()是好看用的
     
-    # Converting
+    # Unit Convertion
     cvFactor = (1 * u.Jy/OmegaB).to(u.K, equivalencies=u.brightness_temperature(freq)).value
-    print(f"Converting intensity unit of {molename}'s mom0...")
+    print(f"Converting intensity unit of {molename}'s mom0... ({count}/{len(files_info)})")
     map_K = map_Jb * cvFactor # matrix <3
-    print(f'Finish the convertion! ({count}/{len(files_info)})')
     count += 1
+
+    # Revise Header (Intensity Unit)
+    hdu.header['OBJECT'] = 'Circinus Galaxy'
+    hdu.header['BUNIT'] = 'K km s-1'
+    hdu.header['COMMENT'] = 'Convert the intensity unit from Jy/beam to Kevlin, by qing'
 
     # Save into maps_info
     if maptype == 'emap':
         maps_info[f'{maptype}_{molename}'] = {
-            "header" : hdu.header,
+            "header_K" : hdu.header,
             "unitK": map_K,
             }
     elif maptype == 'mom0': 
         maps_info[f'{maptype}_{molename}_{nsig}'] = {
-            "header" : hdu.header,
+            "header_K" : hdu.header,
             "unitK": map_K,
             }
-        
+
+count = 1 # 回收使用    
 
 
 # ---------------------------- 2. Reproject to CO(2-1) ------------------------------ #
 # Make Reprojt Template
-template_map = fits.open(f'{mom0Path}/mom0_co-21_smooth3.2as_3.0sigma.fits')[0] # use CO(2-1) as template
-
-#################################他媽的就是做到這邊
-template_wcs = WCS(template_hdu.header).celestial # 確保只有 RA/Dec
-### 還有 target shape 的問題嗎的啊啊啊啊好玄幻
-### 我之前是這樣做的哪 他媽的我早就忘記了
-###但是茜草裡面記載有關wcs的搞補好可以修好 ssp 時留下的驚天大疑問
-##############################
-
-
-
+template_header = fits.open(f'{mom0Path}/mom0_co-21_smooth3.2as_3.0sigma.fits')[0].header # use CO(2-1) as template
+template_wcs2 = WCS(template_header).celestial # 確保只有 RA/Dec, so wcs**2**
 '''
-All cube wiil be reproject with THIS template
-選擇 CO(2-1) 因為他的網格比較細 (一個 pixel 對應到的 arcsec 最少)
+因為用整個 header 的話, error map 的部分會出問題
+可能因為 error map 的部分超級手搓的
 
-之後可能會做類似: 視野以 CO(1-0) 為準, 網格大小以 CO(2-1) 為準的新投影
-但因為現在主打的是一個跑出來就好, 所以就先犧牲外圈的視野了
-'''
-revise_header_kw = ['NAXIS1', 'NAXIS2', 'CDELT1', 'CDELT2', 'CRPIX1', 'CRPIX2'] # to revise these header keywords
-template_header_kw = {}
-for i in revise_header_kw:
-    template_header_kw[i] = template_map.header[i]
+新的方案是, 讀 CO(2-1) 的 header 中, 與天空座標有關的部分 wcs.WCS()
+並用 .celestial 保證只有 RA/Dec, 沒有什麼退化的第三軸之類的
+反正重新投影也不關頻率軸的事
 
-print(template_header_kw)
-'''
-因為想說這樣就只要讀一次 header,
-走訪字典應該比走訪 spectral cube object 要省時間?
+所以傳入 reproject_adaptive() 的參數就是
+- (the_map, the_wcs2): 要進行投影的 map(hdu.data) 和 他原本的二維天空座標 (WCS().celestial)
+- (template_wcs2): output_projection, CO(2-1) 的二維天空座標
 '''
 
 """
@@ -199,30 +192,69 @@ for i in maps_info.keys():
     print(f"{i}: {cdelt:.3f} arcsec/pixel")
 """
     
-# Reprojectttttt
+# Reproject to CO(2-1)
 for i in maps_info.keys():
-    # Revise Header (from Header Template)
-    new_header = maps_info[i]["header"].copy()
-    for k, v in template_header_kw.items():
-        new_header[k] = v
+    # Prepare Meterial
+    the_map = maps_info[i]["unitK"]
+    the_wcs2 = WCS(maps_info[i]["header_K"]).celestial
 
-    # Upsampling...
-    upsample, _ = reproject_adaptive((maps_info[i]["unitK"], maps_info[i]["header"]), new_header)
+    # Upsampling (Reprojecting) ...
+    upsample, _ = reproject_adaptive((the_map, the_wcs2), template_wcs2)
+
+    # Revise Header (WCS, by reproject)
+    the_header = maps_info[i]["header_K"].copy()
+    the_header.update(template_wcs2.to_header())
+    '''
+    是先複製一份原來的作為湯底:    reproj_header = maps_info[i]["header"].copy()
+    然後在原本的湯底上加上天空資訊: reproj_header.update(template_wcs2.to_header())
+    .to_header() 可以讓物件轉職成為 header
+    .update() 就是字面意義上的功能, 在這兒替換掉二維天空座標
+    '''
+
+    # Save Up-Sampled Info (data + WCS(header)) into maps_info
+    maps_info[i]["upsample"] = upsample # upsample is numpy.ndarray object
+    maps_info[i]["header_reproj"] = the_header
 
 
+# ------------------------ 3. Save FINAL DATA as FITS ------------------------------ #
+for i in maps_info.keys():
+    # Get the File Name Keyword...
+    key = i.split('_')
+    molename = key[1] # 大家都一樣
+    '''
+    寫得有點醜哈
+    分割 maps_info 的 key, 參考
+    if maptype == 'emap':
+        maps_info[f'{maptype}_{molename}'] = {
+            "header_K" : hdu.header,
+            "unitK": map_K,
+            }
+    elif maptype == 'mom0': 
+        maps_info[f'{maptype}_{molename}_{nsig}'] = {
+            "header_K" : hdu.header,
+            "unitK": map_K,
+            }
+    '''
 
-"""
-for i in range(1):
-    print(1)
+    # Load 內餡
+    reproj_map = maps_info[i]["upsample"]
+    reproj_header = maps_info[i]["header_reproj"]
 
-    # Save as FITS
-    fitsOut = f'{mom0Path}/mom0_unitK_{molename}_smooth{smoothTO}as_{nsig}sigma.fits'
-    # Revise Header
-    header['OBJECT'] = 'Circinus Galaxy'
-    header['BUNIT'] = 'K km s-1'
-    header['COMMENT'] = 'Convert the intensity unit from Jy/beam to Kevlin, by qing'
-    fits.writeto(fitsOut, map_K, header, overwrite=True) # 依序填入: 檔名、內餡(圖的部分)、標頭
+    # Decide the Output File Name
+    if key[0] == 'emap':
+        maptype = 'error map'
+        fitsOut = f'{emapPath}/emap_unitK_reproj_{molename}_smooth{smoothTO}as.fits'
+    elif key[0] == 'mom0':
+        maptype = 'moment0 map'
+        nsig = key[2]
+        fitsOut = f'{mom0Path}/mom0_unitK_reproj_{molename}_smooth{smoothTO}as_{nsig}sigma.fits'
+        # Only mom0 Need .npy Files
+        np.save(f'{mom0npyPath}/mom0_unitK_reproj_{molename}_smooth{smoothTO}as_{nsig}sigma.npy',
+                 reproj_map)
+    
+    # Saveee
+    fits.writeto(fitsOut, reproj_map, reproj_header, overwrite=True) # 依序填入: 檔名、內餡(圖的部分)、標頭
+    print(f"Saved {key[1]}'s reprojected {maptype} as FITS in unit of brightness temperature. ({count}/{len(files_info)})")
+    count += 1
 
-print()
-print('All mom0s are done and saved as FITS with file name "mom0_unitK_*.fits":)')
-"""
+print('Done.')
