@@ -20,11 +20,6 @@ Tech ref:
     https://reproject.readthedocs.io/en/stable/celestial.html
 - reproject_adaptive:
     https://reproject.readthedocs.io/en/stable/api/reproject.reproject_adaptive.html#reproject.reproject_adaptive
-
-** 這邊用了雙層回圈進行計算, 非常之缺乏效率
-   比較優良的寫法請見 scripts/
-   以及, 這邊因為是舊版, 沒有存檔成 .npy 的功能
-   完全就是一個懷舊情懷
 '''
 
 # --------------------------------- Import Module -------------------------------- #
@@ -148,16 +143,17 @@ for maptype, molename, nsig in files_info:
 
     # Revise Header (Intensity Unit)
     hdu.header['OBJECT'] = 'Circinus Galaxy'
-    hdu.header['BUNIT'] = 'K km s-1'
     hdu.header['COMMENT'] = 'Convert the intensity unit from Jy/beam to Kevlin, by qing'
 
     # Save into maps_info
     if maptype == 'emap':
+        hdu.header['BUNIT'] = 'Kelvin'
         maps_info[f'{maptype}_{molename}'] = {
             "header_K" : hdu.header,
             "unitK": map_K,
             }
-    elif maptype == 'mom0': 
+    elif maptype == 'mom0':
+        hdu.header['BUNIT'] = 'K km s-1'
         maps_info[f'{maptype}_{molename}_{nsig}'] = {
             "header_K" : hdu.header,
             "unitK": map_K,
