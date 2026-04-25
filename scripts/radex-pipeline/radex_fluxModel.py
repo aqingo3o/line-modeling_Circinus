@@ -393,29 +393,7 @@ for molesp, _ in mole_info: # reshape the initial flux model to 5d
 
 for molename in flux_model.keys(): # Save "flux_5d" into .npy
     np.save(f'{npyPath}/flux_{model_5d}_{molename}.npy', flux_model[molename]["flux_5d"]) # (filename) modi by qing (20260317)
-
-# -------------------------------- Construct 5D Ratio Models ------------------------------------- #
-# 這邊不知道怎麼辦，但是沒關係因為這邊後面用不到
-# 想一下怎麼讀出來就好立
-'''
-ratio_co = co21_5d/co10_5d
-ratio_13co = c13o_32_5d/c13o_21_5d
-ratio_c18o = flux_c18o32/flux_c18o21
-ratio_co213co = co21_5d/c13o_21_5d
-ratio_co2c18o = co21_5d/flux_c18o21
-ratio_13co2c18o_21 = c13o_21_5d/flux_c18o21
-ratio_13co2c18o_32 = c13o_32_5d/flux_c18o32
-
-# 這邊真沒招...還得想想
-np.save(f'{npyPath}/ratio_{model_5d}_co-21_over_co-10.npy',     ratio_co) # (filename) modi by qing (20260113)
-np.save(f'{npyPath}/ratio_{model_5d}_13co-32_over_13co-21.npy', ratio_13co)
-np.save(f'{npyPath}/ratio_{model_5d}_c18o-32_over_c18o-21.npy', ratio_c18o)
-np.save(f'{npyPath}/ratio_{model_5d}_co-21_over_c13o-21.npy',   ratio_co213co)
-np.save(f'{npyPath}/ratio_{model_5d}_co-21_over_c18o-21.npy',   ratio_co2c18o)
-np.save(f'{npyPath}/ratio_{model_5d}_13co-21_over_c18o-21.npy', ratio_13co2c18o_21)
-np.save(f'{npyPath}/ratio_{model_5d}_13co-32_over_c18o-32.npy', ratio_13co2c18o_32)
-print('Ratio models saved.')
-'''
+    
 ratio5d_time = time.time()
 
 # ---------------------------------- Construct 6D Flux Models --------------------------------- #
