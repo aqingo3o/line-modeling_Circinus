@@ -68,6 +68,7 @@ for i in under_radexio: # third-level
         os.makedirs(ioPath_sub)
 print('Folder structure is ok :)')
 print()
+
 # ------------------------------- Path Variables ---------------------------------- #
 radexioPath = f'{projectRoot}/data/radex_io' # 巨幅檔案數目的那個
 npyPath = f'{projectRoot}/data/model_npy'    # extract flux 的那些
@@ -447,4 +448,4 @@ timerec.write(f'It took {(ratio5d_time - fluxini_time):.2f} seconds to save 5d r
 timerec.write(f'It took {(flux6d_time - ratio5d_time):.2f} seconds to save 6d flux models.\n')
 timerec.close()
 
-print('誠摯的恭喜您 腳本沒有任何阻礙地跑到這了 祝您工作順利哇<3')
+print('Sincere congratulations! This script arrived here without any obstacles. <3')
