@@ -2,7 +2,7 @@
 > [!CAUTION]
 > This repo mainly serves as a personal log of the research process and may contain contain many imperfect operations .   
 >
-**👾 Current Progress:** Masuring noise in each cubes.  
+**👾 Current Progress:** fitting one pixel in central region. (and got bad chi2 :(  
 >
 ---
 ## Quick Start
