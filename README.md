@@ -2,11 +2,43 @@
 > [!CAUTION]
 > This repo mainly serves as a personal log of the research process and may contain contain many imperfect operations .   
 >
-**👾 Current Progress:** fitting one pixel in central region. (and got bad chi2 :(  
+**👾 Current Progress:** fitting one pixel in central region, and got bad chi2 :(  
 >
 ---
 ## Quick Start
-I am not really sure but [radex-pipeline](scripts/radex-pipeline/) should be done first.
+### For Data Reduction
+0. **Crop the data cubes FIRST!**  
+Use this script: [cube_cropper_casa.py](scripts/preProcess/cube_cropper_casa.py). This scripts was design to run within full CASA on machines with enough RAM. (do not use feifei)  
+Module casa is *okay*, add these in script before running.
+```python
+from casatasks import importfits, imsubimage, imhead, exportfits
+```
+
+1. **Convolve to common beam**.
+Use [cube_smoother_casa.py](scripts/preProcess/cube_smoother_casa.py).  
+Similarly, this should be run with CASA on big computer.  
+*If the script is killed or crashes mid-process, try limiting the threads with the following command:*  
+```bash
+export OMP_NUM_THREADS=4
+```
+
+2. **Measure noise** (for making mom0, not for chi2)  
+Use this script: [cube_noiseStat.py](scripts/preProcess/cube_noiseStat.py), here need the smoothed cubes from previous step.
+
+3. **Make mom0 and error maps** (<- for fitting)  
+Use these scripts: [cube_mom0Maker.py](scripts/preProcess/cube_mom0Maker.py) for making moment zero maps and [cube_errorMap.py](scripts/preProcess/cube_errorMap.py) for making error maps.  
+
+4. **Unit conversion and reproject**  
+For RADEX modeling, maps' unit should be **K** (or K* km/s), not **Jy/beam** (or Jy/beam* km/s), so we need this step.
+
+### For Building Model Grid
+0. Run [radex_fluxModel.py](scripts/radex-pipeline/radex_fluxModel_rename.py) in your projectRoot folder.  
+It will first establish folder structure for the coming work, and build the physical condition grid, and extract flux data from model for fitting.  
+WARNING: This step take lots time, run this script on server maybe a good choice...   
+
+2. Run [radex_ratioModel.py](scripts/radex-pipele/radex_ratioModel.py), not sure for what now :(
+
+3. Try [fit_fitONEpix](exp/fit_fitONEpix_fllComment.py), and get a piece of shit. (<- I am here, working on 'what's wrong')  
 
 ## Repository Structure
 |Folder|Description|Rating
