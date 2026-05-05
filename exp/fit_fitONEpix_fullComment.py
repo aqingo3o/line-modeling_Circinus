@@ -34,13 +34,12 @@ caliError = 0.1 # calibration error, by Eltha
 # ((molespiece-transis), 要用 mask 掉多少 sigma 的 mom0)
 moles_info = [('co-10',   3.0), 
               ('13co-10', 3.0), 
-              #('c18o-10', 3.0), 
+              ('c18o-10', 3.0), 
               ('co-21',   3.0), 
               ('13co-21', 3.0), 
               ('c18o-21', 3.0),
              ]
 fitting_material = {} # fitting 的材料, 雙層字典君
-fitting_result = {}   # fitting 的結果, 一樣雙重字典, 分開放吧 不缺這點記憶體
 
 # ------------------------ Get Modeling Material ---------------------------------- #
 for molename, nsig in moles_info:
@@ -107,7 +106,14 @@ for molename, material_set in fitting_material.items():
     chi2_sum += ((material_set["flux_model"] - material_set["flux_obs"]) / material_set["error"]) ** 2
 
 chi2_min = np.nanmin(chi2_sum) # 這裡的 min 是在找卡方值網格裡的最小值, 不是在找哪個 molename 的最小值
-best_set = np.unravel_index(np.nanargmin(chi2_sum, axis=None), chi2_sum.shape) # 不清楚這個用法但是先寫了
+best_set = np.unravel_index(np.nanargmin(chi2_sum, axis=None), model_shape)
+'''
+函式的解釋詳見茜草 20260505
+best_set 是代表 chi2_min 出現在 chi2_sum 網格中的位置 (index),
+而 chi2_sum 的形狀和 model_shape 一樣
+所以用下面還原的手段 (參考網格建立的寫法, in radex_fluxModel.py 最開始的地方)
+就可以得到 fit 出來的物理條件
+'''
 
 # Chi2 Contribution of Each Line
 #'''
@@ -118,7 +124,7 @@ for molename, material_set in fitting_material.items():
 print()
 #'''
 
-# ------------------------- Show Fitting Results . ------------------------------ #
+# --------------------------- Show Fitting Results . ---------------------------- #
 # (chi2_min, best_set)
 print(f'minumum chi2 = {chi2_min:.2f}, at best set: {best_set}')
 print("The best set's order follow [Nco, Tk, nH2, X(12/13), X(13/18), Phi_bf]") # 也是從 radex_fluxModle.py 猜的
@@ -130,91 +136,104 @@ print()
 應該要從 radex_fluxModel.py 那邊匯出網格, 
 然後這邊讀那個網格 ...
 就算是 .txt 也是要
+**
+best_set 的順序是建立 chi2_sum 時的順序, 
+而 chi2_sum 又是依附在 mole_flux-model 上, 
+繼續往前追, 在 radex_fluxModel.py 中, 
+是 **Containers for File Saving** 這段的寫法決定了順序
 '''
-Nco_best = np.round(0.2 * best_set[0] + 16., 1)
+Nco_best = np.round(0.2 * best_set[0] + 15., 1)
 Tk_best = 0.1 * best_set[1] + 1. # 加了小數點, 避免他在那邊叫說 float64 怎樣的
 nH2_best = 0.2 * best_set[2] + 2.
 X12to13_best = np.round(10 * best_set[3] + 10., 1)
-X13to18_best = np.round(1.5 * best_set[4] + 2., 1)
-Phi_best = np.round(0.05 * best_set[5] + 0.05, 1)
+X13to18_best = np.round(1 * best_set[4] + 2., 1)
+Phi_best = np.round(0.05 * best_set[5] + 0.05, 1) # 這個找不到來源雞掰
+'''
+[the 還原參考], from radex_fluxModel.py 很前面的地方
+Nco = np.arange(15., 20.1, 0.2)
+Tkin = np.arange(1., 2.8, 0.1)
+nH2 = np.arange(2., 5.1, 0.2) # step size for Nco and nH2 should be the same
+X_13co = np.arange(10, 205, 10)
+X_c18o = np.arange(2, 21, 1)
+round_dens, round_temp = 1, 1
 
-extent_nT = (2.,5.2,1,2.4) # 這不知道是啥, 先留著
+Nco, nH2, Tkin 都是指數部分(10^a的a)
+'''
 
 # (Physical Conditions)
+# 他媽的單位絕對不是這樣
 print('< Best Physical Conditions? >')
-print(f"{'Best CO Column Density':<30} {'(N_co)':<9}: {Nco_best:<5} cm^-2")
-print(f"{'Best Kinetic Temperature':<30} {'(T_k)':<9}: {Tk_best:<5} K")
-print(f"{'Best Collision Partner Density':<30} {'(n_H2)':<9}: {nH2_best:<5} cm^-3")
+print(f"{'Best CO Column Density':<30} {'(N_co)':<9}: 10^{Nco_best:<5} cm^-2")
+print(f"{'Best Kinetic Temperature':<30} {'(T_k)':<9}: 10^{Tk_best:<5} K")
+print(f"{'Best Collision Partner Density':<30} {'(n_H2)':<9}: 10^{nH2_best:<5} cm^-3")
 print(f"{'Best 12CO/13CO Abundance Ratio':<30} {'(X_12/13)':<9}: {X12to13_best:<5}")
 print(f"{'Best 13CO/C18O Abundance Ratio':<30} {'(X_13/18)':<9}: {X13to18_best:<5}")
 print(f"{'Best Beam Filling Factor':<30} {'(Phi_bf)':<9}: {Phi_best:<5}")
       
 
-#np.save(f'{productPath}/chi2_{ndmodel}_ewcor_{pix_x}_{pix_y}', chi2_sum)
+np.save(f'{productPath}/chi2_tt/chi2Sum_{ndmodel}d-coarse2_tt_{pix_x}-{pix_y}', chi2_sum)
 
 
-"""
-idx_N = par_min[0]
-idx_X1 = par_min[3]
-idx_X2 = par_min[4]
-idx_Phi = par_min[5]
 
-# Contour plots
-# 喔這張圖我看不懂，亂亂的線
-slice_co10 = model_co10[idx_N, :, :, idx_X1, idx_X2, idx_Phi]  
-slice_co21 = model_co21[idx_N, :, :, idx_X1, idx_X2, idx_Phi]
-slice_13co21 = model_13co21[idx_N, :, :, idx_X1, idx_X2, idx_Phi]
-slice_13co10 = model_13co10[idx_N, :, :, idx_X1, idx_X2, idx_Phi]
-slice_c18o21 = model_c18o21[idx_N, :, :, idx_X1, idx_X2, idx_Phi]
-slice_c18o10 = model_c18o10[idx_N, :, :, idx_X1, idx_X2, idx_Phi]
 
-con_co10 = plt.contour(slice_co10, origin='lower', 
-                       levels = np.array((flux_co10-err_co10, flux_co10+err_co10)),
-                       extent = extent_nT, colors='gray'
-                       )
-con_co21 = plt.contour(slice_co21, origin='lower',
-                       levels = np.array((flux_co21-err_co21, flux_co21+err_co21)), 
-                       extent = extent_nT, colors = 'k', linestyles = 'dashed'
-                       )
-con_13co10 = plt.contour(slice_13co10, origin='lower',
-                         levels = np.array((flux_13co10-err_13co10, flux_13co10+err_13co10)),
-                         extent = extent_nT, colors ='b', linestyles = 'dotted'
-                         )
-con_13co21 = plt.contour(slice_13co21, origin='lower',
-                         levels = np.array((flux_13co21-err_13co21, flux_13co21+err_13co21)),
-                         extent = extent_nT, colors = 'c'
-                        )
-con_c18o10 = plt.contour(slice_c18o10, origin='lower',
-                         levels = np.array((flux_c18o10-err_c18o10, flux_c18o10+err_c18o10)),
-                         extent = extent_nT, colors = 'r', linestyles = 'dashdot'
-                         )
-con_c18o21 = plt.contour(slice_c18o21, origin='lower',
-                         levels = np.array((flux_c18o21-err_c18o21, flux_c18o21+err_c18o21)),
-                         extent = extent_nT, colors = 'm'
-                         )
 
-plt.gca().clabel(con_co10, inline=1, fontsize=10, fmt='%1.1f')
-plt.gca().clabel(con_co21, inline=1, fontsize=10, fmt='%1.1f')
-plt.gca().clabel(con_13co21, inline=1, fontsize=10, fmt='%1.1f')
-plt.gca().clabel(con_13co10, inline=1, fontsize=10, fmt='%1.1f')
-plt.gca().clabel(con_c18o21, inline=1, fontsize=10, fmt='%1.1f')
-plt.gca().clabel(con_c18o10, inline=1, fontsize=10, fmt='%1.1f')
+# -------------------------------- Contour plots -------------------------------- #
+'''
+先這樣寫了啦
+'''
+# color & style setting of plot
+plot_config = {
+    "co-10":   {'c': "#9D9D9D", 'ls': '-',  'label': 'CO 1-0'},
+    "co-21":   {'c': '#000000', 'ls': '--', 'label': 'CO 2-1'},
+    "13co-10": {'c': "#0037FF", 'ls': '-',  'label': '13CO 1-0'},
+    "13co-21": {'c': "#00FFE5", 'ls': ':',  'label': '13CO 2-1'},
+    "c18o-10": {'c': "#F30000", 'ls': '-',  'label': 'C18O 1-0'},
+    "c18o-21": {'c': "#FC00CE", 'ls': '-.', 'label': 'C18O 2-1'},
+}
+# contour plot material
+extent_nT = (2., 5.2, 1, 2.4) # 這不知道是啥
+idx_N, idx_X1, idx_X2, idx_Phi = best_set[0], best_set[3], best_set[4], best_set[5]
+contour_material = {}
+for molename, _ in moles_info:
+    the_mole = fitting_material[molename]
 
-line_co10 = mlines.Line2D([], [], color='gray', label='CO 1-0')
-line_co21 = mlines.Line2D([], [], color='k', label='CO 2-1', ls='--')
-line_13co10 = mlines.Line2D([], [], color='b', label='13CO 1-0')
-line_13co21 = mlines.Line2D([], [], color='c', label='13CO 2-1', ls=':')
-line_c18o10 = mlines.Line2D([], [], color='r', label='C18O 1-0')
-line_c18o21 = mlines.Line2D([], [], color='m', label='C18O 2-1', ls='-.')
+    contour_material[molename] = {
+        "slice":  the_mole["flux_model"][idx_N, :, :, idx_X1, idx_X2, idx_Phi],
+        "levels": np.array((the_mole['flux_obs'] - the_mole["error"], 
+                            the_mole['flux_obs'] + the_mole["error"])),  # 信心區間
+                            }
 
-legend = plt.legend(handles=[line_co10,line_co21, line_13co10, line_13co21, line_c18o10, line_c18o21], loc='lower left')  #, prop=lprop 
+# contours
+'''
+窩知道這邊寫得很醜但先跑再說了
+'''
+handles = []
+for molename, _ in moles_info:
+    the_contour = plt.contour(contour_material[molename]["slice"], origin='lower',
+                              levels = contour_material[molename]["levels"],
+                              extent = extent_nT, 
+                              colors = plot_config[molename]["c"],
+                              linestyles = plot_config[molename]["ls"],
+                              )
+    contour_material[molename]["contour"] = the_contour
+    plt.gca().clabel(the_contour, inline=1, fontsize=10, fmt='%1.1f')
+    handles.append(mlines.Line2D([], [], 
+                                 color = plot_config[molename]["c"], 
+                                 label = plot_config[molename]["label"],)
+                                 )
 
-plt.title(r'$\log \left( N_{CO}\cdot\frac{15\ km\ s^{-1}}{\Delta v}\right)$ ='+str(Nco)+r'; $X_{12/13}$ ='+str(X12to13)+r'; $X_{13/18}$ ='+str(X13to18)+r'; $\log(\Phi_{bf})$ ='+str(Phi))
-plt.fill_between([n_best,n_best+0.2], [T_best,T_best], [T_best+0.1,T_best+0.1], color='red', alpha='0.7')
+legend = plt.legend(handles = handles, loc = 'lower left')  #, prop=lprop 
+
+plt.title(r'$\log \left( N_{CO}\cdot\frac{15\ km\ s^{-1}}{\Delta v}\right)$ ='+str(Nco_best)+r'; $X_{12/13}$ ='+str(X12to13_best)+r'; $X_{13/18}$ ='+str(X13to18_best)+r'; $\log(\Phi_{bf})$ ='+str(Phi_best))
+plt.fill_between([nH2_best, nH2_best+0.2],
+                 [Tk_best, Tk_best],
+                 [Tk_best+0.1, Tk_best+0.1], 
+                 color='red', alpha=0.7)
+
 plt.ylabel(r'$\log\ T_k\ (K)$', fontsize=12)
 plt.xlabel(r'$\log\ n_{H_2}\ (cm^{-3})$', fontsize=12)
-plt.savefig(f'{productPath}/flux_{model}_rmcor_contours_{idx_x}_{idx_y}_cal10-20.pdf', bbox_inches='tight', format='pdf')
+plt.savefig(f'{productPath}/figure/contour_{ndmodel}d-coarse2_rmcor_fitbyFLUX_{pix_x}_{pix_y}.pdf', 
+            bbox_inches='tight', format='pdf')
 
 plt.tight_layout()
 plt.show()
-"""
