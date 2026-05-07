@@ -3,7 +3,6 @@
 '''
 當然是從 Eltha 那邊抄的, 適應了 feifei 的檔案環境, 
 import 的 flux model 來自 scripts/radex_fluxModel.py
-(update at 20260321)
 '''
 
 # --------------------------------- Import Module --------------------------------- #
@@ -20,11 +19,6 @@ emapPath = f'{projectRoot}/data/error_map'
 productPath = f'{projectRoot}/products'
 
 ndmodel = 6 # nd, 5d, 6d; coarse2 的部分寫在 formatting
-'''
-等一下,
-我是先覺得我只有 6 條線, 所以我就用少一點參數的版本 (Phi 先刪掉, 因為他是最後一個)
-但是 Eltha 也是 6 條線 6 個參數耶?
-'''
 
 # -------------------------------- Basic Variables -------------------------------- #
 pix_y, pix_x = 439, 396 # choose a spatial pixel, 他媽的老子精挑細選到一個大家都有值得地方真他媽辛苦我自己了
@@ -34,7 +28,7 @@ caliError = 0.1 # calibration error, by Eltha
 # ((molespiece-transis), 要用 mask 掉多少 sigma 的 mom0)
 moles_info = [('co-10',   3.0), 
               ('13co-10', 3.0), 
-              ('c18o-10', 3.0), 
+              #('c18o-10', 3.0), 
               ('co-21',   3.0), 
               ('13co-21', 3.0), 
               ('c18o-21', 3.0),
@@ -165,21 +159,43 @@ Nco, nH2, Tkin 都是指數部分(10^a的a)
 print('< Best Physical Conditions? >')
 print(f"{'Best CO Column Density':<30} {'(N_co)':<9}: 10^{Nco_best:<5} cm^-2")
 print(f"{'Best Kinetic Temperature':<30} {'(T_k)':<9}: 10^{Tk_best:<5} K")
-print(f"{'Best Collision Partner Density':<30} {'(n_H2)':<9}: 10^{nH2_best:<5} cm^-3")
+print(f"{'Best Number Density':<30} {'(n_H2)':<9}: 10^{nH2_best:<5} cm^-3")
 print(f"{'Best 12CO/13CO Abundance Ratio':<30} {'(X_12/13)':<9}: {X12to13_best:<5}")
 print(f"{'Best 13CO/C18O Abundance Ratio':<30} {'(X_13/18)':<9}: {X13to18_best:<5}")
 print(f"{'Best Beam Filling Factor':<30} {'(Phi_bf)':<9}: {Phi_best:<5}")
       
-
 np.save(f'{productPath}/chi2_tt/chi2Sum_{ndmodel}d-coarse2_tt_{pix_x}-{pix_y}', chi2_sum)
 
+# ----------------------- flux_obs v.sv flux_model ----------------------------- #
+mole_name_list = []
+flux_obs_pix = []
+flux_model_pix = []
+error_pix = [] # 因為要畫圖, 弄成串列比較方便
 
+for molename, _ in moles_info:
+    mole_name_list.append(molename)
+    flux_model_pix.append(fitting_material[molename]["flux_model"][best_set])
+    flux_obs_pix.append(fitting_material[molename]["flux_obs"])
+    error_pix.append(fitting_material[molename]["error"])
 
+x_axis = np.arange(len(moles_info))
 
+plt.scatter(x_axis, flux_model_pix,
+            marker='x', color='r', s=40,
+            label='Model (Best Fit)')
+plt.errorbar(x_axis, flux_obs_pix, 
+             yerr=error_pix,
+             fmt='o', color='k', markersize=4, capsize=3,
+             label='Observed')
 
-# -------------------------------- Contour plots -------------------------------- #
-'''
-先這樣寫了啦
+plt.xticks(x_axis, mole_name_list, rotation=45)
+plt.xlabel('molecular line')
+plt.ylabel('Flux (K km/s)')
+plt.legend()
+plt.title(f'observed v.s. model flux of ({pix_x}, {pix_y}), chi2={chi2_min:.2f}')
+plt.show()
+
+# -------------------------------- ContourS Plot -------------------------------- #
 '''
 # color & style setting of plot
 plot_config = {
@@ -204,9 +220,7 @@ for molename, _ in moles_info:
                             }
 
 # contours
-'''
-窩知道這邊寫得很醜但先跑再說了
-'''
+# 窩知道這邊寫得很醜但先跑再說了
 handles = []
 for molename, _ in moles_info:
     the_contour = plt.contour(contour_material[molename]["slice"], origin='lower',
@@ -224,7 +238,7 @@ for molename, _ in moles_info:
 
 legend = plt.legend(handles = handles, loc = 'lower left')  #, prop=lprop 
 
-plt.title(r'$\log \left( N_{CO}\cdot\frac{15\ km\ s^{-1}}{\Delta v}\right)$ ='+str(Nco_best)+r'; $X_{12/13}$ ='+str(X12to13_best)+r'; $X_{13/18}$ ='+str(X13to18_best)+r'; $\log(\Phi_{bf})$ ='+str(Phi_best))
+#plt.title(r'$\log \left( N_{CO}\cdot\frac{15\ km\ s^{-1}}{\Delta v}\right)$ ='+str(Nco_best)+r'; $X_{12/13}$ ='+str(X12to13_best)+r'; $X_{13/18}$ ='+str(X13to18_best)+r'; $\log(\Phi_{bf})$ ='+str(Phi_best))
 plt.fill_between([nH2_best, nH2_best+0.2],
                  [Tk_best, Tk_best],
                  [Tk_best+0.1, Tk_best+0.1], 
@@ -236,4 +250,6 @@ plt.savefig(f'{productPath}/figure/contour_{ndmodel}d-coarse2_rmcor_fitbyFLUX_{p
             bbox_inches='tight', format='pdf')
 
 plt.tight_layout()
+print('Contour plot, here u go :)')
+'''
 plt.show()
