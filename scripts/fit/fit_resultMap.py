@@ -11,12 +11,12 @@ import matplotlib.pyplot as plt
 projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus' # feifei
 resultPath = f'{projectRoot}/products/fittingResult'
 
-whichone = 'partial'
+whichone = 'wholemap' ###
 if whichone == 'partial':
     imrange = (340, 560)
 elif whichone == 'wholemap':
-    imrange = ()
-
+    imrange = (50, 840)
+    #imrange = (200, 600)
 map_chi2_min = np.load(f'{resultPath}/map_chi2Min_{whichone}.npy')
 map_best_phy = np.load(f'{resultPath}/map_bestPhyCondi_{whichone}.npy')
 phy_info = [ # Order matter!
@@ -30,15 +30,18 @@ phy_info = [ # Order matter!
     ('Beam Filling Factor',       '', 'gray'),
     ]
 
-fig, ax = plt.subplots(2, 4, figsize=(12, 12))
+fig, ax = plt.subplots(2, 4, figsize=(20, 10)) # 存下來就好看了
 ax_flat = ax.flatten() # 壓成 1d 這樣可以用洄圈
 for i in range(7):
-    if i == 6:
+    if i == 6: #chi2
         splot = ax_flat[i].imshow(map_chi2_min[imrange[0]:imrange[1], imrange[0]:imrange[1]], 
-                                  origin='lower', cmap='gray')
+                                  vmax=6, origin='lower', cmap='tab10')
+        '''
+        cmap=tab10 雖然看起來很像嘔吐物, 但意外的很清楚耶耶
+        '''
         cbar = fig.colorbar(splot, ax=ax_flat[i], fraction=0.046, pad=0.04)
         ax_flat[i].set_title('chi2 min')
-    else:
+    else: # physical conditions
         splot = ax_flat[i].imshow(map_best_phy[imrange[0]:imrange[1], imrange[0]:imrange[1], i], 
                                   origin='lower', cmap=phy_info[i][2])
         cbar = fig.colorbar(splot, ax=ax_flat[i], fraction=0.046, pad=0.04) # 神奇小數值
@@ -47,5 +50,5 @@ for i in range(7):
         
 ax_flat[-1].set_visible(False) # 新技術欸
 plt.tight_layout() # 神奇妙妙工具
-plt.savefig(f'{resultPath}/map_fittingResult_{whichone}.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'{resultPath}/fig_fittingResult_{whichone}.png', dpi=300, bbox_inches='tight')
 plt.show()
