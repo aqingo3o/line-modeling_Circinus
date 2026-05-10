@@ -1,7 +1,7 @@
-# This script can run on blackhole:)
+# This script should process on blackhole:)
 '''
 from fit_fitONEpix_fullComment.py,
-第一次自己寫平行處理, 嘻嘻
+Success on the server :D
 '''
 
 ### ----------------------------- Import Module ---------------------------- ###
@@ -12,14 +12,14 @@ import time
 
 startTime = time.time()
 ### --------------------------- Path Variables ----------------------------- ###
-#projectRoot = '/home/aqing/Documents/line-modeling_Circinus' # blackhole
-projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus' # feifei
+projectRoot = '/home/aqing/Documents/line-modeling_Circinus' # blackhole
+#projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus' # feifei
 modelPath = f'{projectRoot}/data/model_npy'
 mom0Path = f'{projectRoot}/data/mom0_npy'
 emapPath = f'{projectRoot}/data/error_map'
 productPath = f'{projectRoot}/products'
 
-ndmodel = 6 # nd, 5d, 6d; coarse2 的部分寫在 formatting
+ndmodel = 6
 
 ### ---------------------------- Basic Variables ---------------------------- ###
 caliError = 0.1 # calibration error, by Eltha
@@ -32,8 +32,10 @@ moles_info = [('co-10',   3.0),
               ('co-21',   3.0),
               ('13co-21', 3.0),
               ('c18o-21', 3.0),
+              ('co-31',   3.0),
              ]
 
+nline = len(moles_info)
 flux_model = {} # 只裝 model
 for molename, nsig in moles_info: # pixel independent
     # Load Flux Model (.npy)
@@ -51,11 +53,11 @@ def bs2phy(chi2_array):
     best_set = np.unravel_index(np.nanargmin(chi2_array, axis=None), chi2_array.shape)
 
     Nco_best = np.round(0.2 * best_set[0] + 15., 1)
-    Tk_best = 0.1 * best_set[1] + 1. # 加了小數點, 避免他在那邊叫說 float64 怎樣的
+    Tk_best = 0.1 * best_set[1] + 1.
     nH2_best = 0.2 * best_set[2] + 2.
     X1213_best = np.round(10 * best_set[3] + 10., 1)
     X1318_best = np.round(1 * best_set[4] + 2., 1)
-    Phi_best = np.round(0.05 * best_set[5] + 0.05, 1) # 這個找不到來源雞掰
+    Phi_best = np.round(0.05 * best_set[5] + 0.05, 1)
     return (Nco_best, Tk_best, nH2_best, X1213_best, X1318_best, Phi_best)
 
 ### --------------------------- def: Fix ONE pixel -------------------------- ###
@@ -71,9 +73,9 @@ def fit1pix(pix_y, pix_x):
     # ------------- Get fiiting materials ------------- #
     for molename, nsig in moles_info:
         # Load Real Flux Data from mom0 (.npy)
-        flux_obs = np.load(f'{mom0Path}/mom0_unitK_reproj_{molename}_smooth3.2as_{nsig}sigma.npy')[pix_y, pix_x] # 注意軸序!
+        flux_obs = np.load(f'{mom0Path}/mom0_unitK_reproj_{molename}_smooth3.2as_{nsig}sigma.npy')[pix_y, pix_x]
         # Import Error Maps (.fits)
-        emap = fits.open(f'{emapPath}/emap_unitK_reproj_{molename}_smooth3.2as.fits')[0].data[pix_y, pix_x] # 注意軸序!
+        emap = fits.open(f'{emapPath}/emap_unitK_reproj_{molename}_smooth3.2as.fits')[0].data[pix_y, pix_x]
         #** flux_obs & emap 的檢查點 **#
         if np.isnan(flux_obs) or np.isnan(emap):
             pix_permitted = False # 標示為壞 pixel
@@ -95,8 +97,7 @@ def fit1pix(pix_y, pix_x):
         }
 
     # ------------------- GO! or NO GO ------------------ #
-    if not pix_permitted: # 這格沒救了，填入 NaN 後直接進下一個像素
-        #print(f'WARNING: Skipped ({pix_x}, {pix_y}) due to bad data.')
+    if not pix_permitted:
         return (pix_y, pix_x, np.nan, [np.nan]*6)
 
     # --------------- Compute chi^2 Array --------------- #
@@ -113,11 +114,13 @@ def fit1pix(pix_y, pix_x):
 ### ------------------------------- START! ---------------------------------- ###
 print('READY? GO!')
 
-results = Parallel(n_jobs=-1)(
+results = Parallel(n_jobs=-1)( # 用掉所有的緒是不道德的! 
     delayed(fit1pix)(y, x) 
     for y in range(800) for x in range(800)
 )
 print('Done!')
+fitTime = time.time()
+print(f'It took {(fitTime - startTime):.2f} seconds to finish fitting whole map:)')
 ### --------------------- Fill back to result_arrays -------------------- ###
 map_best_phy = np.full((850, 850, 6), np.nan) # 6 個 physical condition
 map_chi2_min = np.full((850, 850), np.nan) # 雖然只有 740 個 pix, 
@@ -126,8 +129,8 @@ for y, x, chi2_mn, phy_condi in results:
     map_best_phy[y, x, :] = phy_condi
     map_chi2_min[y, x] = chi2_mn
 
-np.save(f'{productPath}/fittingResult_ugly/map_chi2Min_wholemap.npy', map_chi2_min)
-np.save(f'{productPath}/fittingResult_ugly/map_bestPhysicalCondi_wholemap.npy', map_best_phy)
+np.save(f'{productPath}/fittingResult_ugly/map_chi2Min_{nline}_wholemap.npy', map_chi2_min)
+np.save(f'{productPath}/fittingResult_ugly/map_bestPhysicalCondi_{nline}_wholemap.npy', map_best_phy)
 print('Results are saved as .npy files.')
 endTime = time.time()
-print(f'It took {(endTime - startTime):.2f} seconds to finish fitting whole map:)')
+print(f'It took {(endTime - fitTime):.2f} seconds to fill back the result arrays.')

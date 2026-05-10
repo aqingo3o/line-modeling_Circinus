@@ -37,7 +37,7 @@ moles_info = [('co-10',   3.0),
               ('13co-21', 3.0),
               ('c18o-21', 3.0),
              ]
-
+nline = len(moles_info)
 fitting_material = {} # fitting 的材料, 雙層字典君
 for molename, nsig in moles_info:
     # Load Flux Model (.npy)
@@ -117,7 +117,7 @@ for i in range(350, 551):
         print(f'({pix_x}, {pix_y}) done!', end='\r') # 好像是會清掉之前的東西
     print()
 
-np.save(f'{productPath}/fittingResult/map_chi2Min_partial.npy', map_chi2_min)
-np.save(f'{productPath}/fittingResult/map_bestPhyCondi_partial.npy', map_best_phy)
+np.save(f'{productPath}/fittingResult/map_chi2Min_{nline}_partial.npy', map_chi2_min) # 因為沒寫平行處理, 所以一定是 partial
+np.save(f'{productPath}/fittingResult/map_bestPhyCondi_{nline}_partial.npy', map_best_phy)
 endTime = time.time()
-print(f'It took {(endTime - startTime):.2f} seconds to finish fitting whole map:)')
+print(f'It took {(endTime - startTime):.2f} seconds to finish fitting partial map:)')

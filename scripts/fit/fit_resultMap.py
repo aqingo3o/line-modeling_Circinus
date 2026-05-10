@@ -1,4 +1,5 @@
 # Do this on feifei because I need mpl
+# Use the result of 'fitMANYpix' (ugly or parallel)
 '''
 Read fitting results from
 - map_chi2Min_partial.npy
@@ -11,14 +12,15 @@ import matplotlib.pyplot as plt
 projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus' # feifei
 resultPath = f'{projectRoot}/products/fittingResult'
 
+nline = '6line'
 whichone = 'wholemap' ###
 if whichone == 'partial':
     imrange = (340, 560)
 elif whichone == 'wholemap':
     imrange = (50, 840)
     #imrange = (200, 600)
-map_chi2_min = np.load(f'{resultPath}/map_chi2Min_{whichone}.npy')
-map_best_phy = np.load(f'{resultPath}/map_bestPhyCondi_{whichone}.npy')
+map_chi2_min = np.load(f'{resultPath}/map_chi2Min_{nline}_{whichone}.npy')
+map_best_phy = np.load(f'{resultPath}/map_bestPhyCondi_{nline}_{whichone}.npy')
 phy_info = [ # Order matter!
     # ('plot title', 'unit', 'cmap')
     ('Colum Density (Nco)',      r'log$N_{\rm CO}$ (cm$^{-2}$)',  'inferno'),
@@ -50,5 +52,5 @@ for i in range(7):
         
 ax_flat[-1].set_visible(False) # 新技術欸
 plt.tight_layout() # 神奇妙妙工具
-plt.savefig(f'{resultPath}/fig_fittingResult_{whichone}.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'{resultPath}/fig_fittingResult_{nline}_{whichone}.png', dpi=300, bbox_inches='tight')
 plt.show()
