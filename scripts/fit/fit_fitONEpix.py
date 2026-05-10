@@ -33,11 +33,13 @@ caliError = 0.1 # calibration error, by Eltha
 # ((molespiece-transis), 要用 mask 掉多少 sigma 的 mom0)
 moles_info = [('co-10',   3.0), 
               ('13co-10', 3.0), 
-              #('c18o-10', 3.0), 
+              #('c18o-10', 3.0), # bad value @@ 
               ('co-21',   3.0), 
               ('13co-21', 3.0), 
               ('c18o-21', 3.0),
+              ('co-32',   3.0)
              ]
+nline = len(moles_info)
 fitting_material = {}
 
 # ------------------------ Get Modeling Material ---------------------------------- #
@@ -137,7 +139,7 @@ for molename, _ in moles_info:
 x_axis = np.arange(len(moles_info))
 
 
-plt.figure(figsize=(8, 5))
+plt.figure(figsize=(6, 5))
 plt.scatter(x_axis, flux_model_pix,
             marker='x', color='r', s=40,
             label='Model (Best Fit)')
@@ -146,10 +148,10 @@ plt.errorbar(x_axis, flux_obs_pix,
              fmt='o', color='k', markersize=4, capsize=3,
              label='Observed')
 
-plt.xticks(x_axis, mole_name_list, rotation=45)
+plt.xticks(x_axis, mole_name_list) #rotation=45
 plt.xlabel('molecular lines')
 plt.ylabel('Flux (K km/s)')
 plt.legend()
 plt.title(f'Flux Comparison of ({pix_x}, {pix_y}),  chi2={chi2_min:.2f}')
-plt.savefig(f'{productPath}/figure/fig_fluxComparison_onepix.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'{productPath}/figure/fig_fluxComparison_{nline}_onepix.png', dpi=300, bbox_inches='tight')
 plt.show()
