@@ -122,9 +122,22 @@ print('Done!')
 fitTime = time.time()
 print(f'It took {(fitTime - startTime):.2f} seconds to finish fitting whole map:)')
 ### --------------------- Fill back to result_arrays -------------------- ###
-map_best_phy = np.full((850, 850, 6), np.nan) # 6 個 physical condition
-map_chi2_min = np.full((850, 850), np.nan) # 雖然只有 740 個 pix, 
-                                           # 但因為是認 idx, 不是認空間的, 所以還是設多一點
+map_best_phy = np.full((900, 900, 6), np.nan) # 6 個 physical condition
+map_chi2_min = np.full((900, 900), np.nan) 
+'''
+雖然好像沒有 fit 滿整個 900x900 的 map, 
+原始ㄉ座標就是 900x900 的,
+(參考 map_convert2KandReproj.py 中的 template, 目前是用的 CO(2-1))
+回填同樣大小的陣列到時候要換回 WCS 系列的會稍微方便一點
+反正也不會多吃多少空間
+
+甚至是可以就直接 fit 全圖的,
+反正有任一條線是 NaN 的地方會很快跳過,
+吃不了多少時間
+
+但是我已經做完了所以先這樣吧, 要改再說
+'''
+
 for y, x, chi2_mn, phy_condi in results:
     map_best_phy[y, x, :] = phy_condi
     map_chi2_min[y, x] = chi2_mn
