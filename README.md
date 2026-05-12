@@ -30,15 +30,23 @@ Use these scripts: [cube_mom0Maker.py](scripts/preProcess/cube_mom0Maker.py) for
 
 4. **Unit conversion and reproject**  
 For RADEX modeling, maps' unit should be **K** (or K* km/s), not **Jy/beam** (or Jy/beam* km/s), so we need this step.
+Reprojection template is **CO(2-1)**, after imsmooth().
+Thought CO(3-2) has smaller FoV, CO(2-1) has 900x900 in pixel while CO(3-2) has only 864x864.
 
 ### For Building Model Grid
-0. Run [radex_fluxModel.py](scripts/radex-pipeline/radex_fluxModel_rename.py) in your projectRoot folder.  
+0. Run [radex_fluxModel.py](scripts/radex-pipeline/radex_fluxModel.py) in your projectRoot folder.  
 It will first establish folder structure for the coming work, and build the physical condition grid, and extract flux data from model for fitting.  
 WARNING: This step take lots time, run this script on server maybe a good choice...   
 
-2. Run [radex_ratioModel.py](scripts/radex-pipele/radex_ratioModel.py), not sure for what now :(
+1. Run [radex_ratioModel.py](scripts/radex-pipele/radex_ratioModel.py), not sure for what now :(
 
-3. Try [fit_fitONEpix](exp/fit_fitONEpix_fllComment.py), and get a piece of shit. (<- I am here, working on 'what's wrong')  
+### For Fitting
+1. Try [fit_fitONEpix](scripts/fit_fitONEpix.py) to fit one pixel.
+Check the informations such as chi2 contribution, NaN in flux model... before fit over the whole map.  
+
+2. To fit pixel-by-pixel over whole map, use [fit_fitMANYpix_parallel.py](scripts/fit_fitMANYpix_parallel.py) to finish the job with parallel processing.  
+Don't occupy all threads of the lab server...
+
 
 ## Repository Structure
 |Folder|Description|Rating
