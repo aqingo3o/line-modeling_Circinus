@@ -51,12 +51,11 @@ Don't occupy all threads of the lab server...
 ## Repository Structure
 |Folder|Description|Rating
 |---|---|---|
-[envs/](envs)|Environment configuration files (.yml or something like that)        |8
-[docs/](docs)|Documentation, notes, and something human-facing.                    |-
-[data/](data)|There are `.dat` files that used for modeling.                       |-
-[exp/](exp)|Test pipelines, and exploratory code.                                  |0
-[scripts/](scripts)|Something good...?                                             |7
-[products/](scripts)|(if any...)                                                   |? 
+[envs/](envs)|Environment configuration files (.yml or .txt)       |8
+[docs/](docs)|Documentation, notes, and something human-facing.    |-
+[data/](data)|There are `.dat` files that used for modeling.       |-
+[exp/](exp)|Test pipelines, and exploratory code.                  |0
+[scripts/](scripts)|Something good...?                             |7
 
 [pyradex_at-first-sight/](pyradex_at-first-sight) Is a bottle of shit, never use that.💩  
 
@@ -85,9 +84,13 @@ To get the `.dat`s, please check [where-to-get-dat.md](../docs/where-to-get-dat.
 ### exp/
 Test pipelines, and exploratory code.  
 基本上我會建議不要使用這邊的東西，因為是試驗性質的東西所以基本上都在亂改哈哈，一鍋雜湯。  
+不過用來回頭查查某些過於緻密的迴圈到底是什麼的時候還算好用，  
+但要用的話還是建議從 [scripts/](../scripts) 中抓。  
 
 ### scripts/
-從 [exp/](../exp) 來的東西，相對稍微經過測試的好版  
+Quick start 中有提到的 scripts 都算經過測試的相對好版，  
+通常會是 [exp/](../exp) 中，同名_fullComment.py 的變種，  
+可能是刪掉一些很白痴的註解，讓程式變得比較可讀一點。  
 也包含一些有用小工具，總之是推薦的一個好物聚集。  
 </details>
 
