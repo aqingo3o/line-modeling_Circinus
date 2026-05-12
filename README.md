@@ -44,7 +44,7 @@ WARNING: This step take lots time, run this script on server maybe a good choice
 1. Try [fit_fitONEpix](scripts/fit_fitONEpix.py) to fit one pixel.
 Check the informations such as chi2 contribution, NaN in flux model... before fit over the whole map.  
 
-2. To fit pixel-by-pixel over whole map, use [fit_fitMANYpix_parallel.py](scripts/fit_fitMANYpix_parallel.py) to finish the job with parallel processing.  
+2. Use [fit_fitMANYpix_parallel.py](scripts/fit_fitMANYpix_parallel.py) to fit pixel-by-pixel over whole map with parallel processing.  
 Don't occupy all threads of the lab server...
 
 
