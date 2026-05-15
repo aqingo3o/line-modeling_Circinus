@@ -1,11 +1,13 @@
 # line-modeling_Circinus
-> [!CAUTION]
-> This repo mainly serves as a personal log of the research process and may contain contain many imperfect operations .   
->
-**👾 Current Progress:** fitting one pixel in central region, and got bad chi2 :(  
+** **This repo mainly serves as a personal log of the research process and may contain contain many imperfect operations.** **
+> 
+**👾 Current Progress:** Just have a meet with Eltha, nearly all of works need redo :(  
+But a lot of valiable comments <3
 >
 ---
 ## Quick Start
+> [!CAUTION]
+>  Before this block disappear, don't trust any script in this repo.  
 ### For Data Reduction
 0. **Crop the data cubes FIRST!**  
 Use this script: [cube_cropper_casa.py](scripts/preProcess/cube_cropper_casa.py). This scripts was design to run within full CASA on machines with enough RAM. (do not use feifei)  
