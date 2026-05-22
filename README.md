@@ -37,16 +37,11 @@ Aside from lots of unnecessary details, this is quite valuable for reference, an
 - **where-to-get-dat.md**  
 As the filename, it explains where and how to get `.dat` files. Please don't laugh because I genuinely didn't know where to find these files at first.
 I thought RADEX would download them automaticallyt?
-- **what-is-wrong00.md**
+- **what-is-wrong00.md**  
 Basically a manual for scripts in [wrong00](exp/wrong00).
 Actually scripts in that directory is technically correct, they just don't conform to the correct data processing flow (astronomy).  
 I put all they in single folder for layout neatness.  
 You might see files with the same names in [scripts](scripts), because, as I said, these code are technically correct:)
-
-
-
-
-it just doesn't conform to the correct data processing flow. 
 
 ### exp/
 Test pipelines, and exploratory code.  
