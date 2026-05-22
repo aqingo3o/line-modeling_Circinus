@@ -1,4 +1,10 @@
-Scripts manual in [wrong00/](../exp/wrong00)
+# What is the scripts in exp/wrong00/ ?
+Here is basically a manual for scripts in [wrong00](../exp/wrong00).
+Actually scripts in that directory is technically correct, they just don't conform to the correct data processing flow (astronomy).  
+I put all they in single folder for layout neatness.  
+You might see files with the same names in [scripts](../scripts), because, as I said, these code are technically correct:)  
+
+U can take below context as **Quick start** for (wrong) workflow;)  
 
 ### For Data Reduction
 0. **Crop the data cubes FIRST!**  
