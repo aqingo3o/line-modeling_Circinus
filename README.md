@@ -6,56 +6,15 @@ But a lot of valiable comments <3
 >
 ---
 ## Quick Start
+comming soon...  
 > [!CAUTION]
 >  Before this block disappear, don't trust any script in this repo.  
-### For Data Reduction
-0. **Crop the data cubes FIRST!**  
-Use this script: [cube_cropper_casa.py](scripts/preProcess/cube_cropper_casa.py). This scripts was design to run within full CASA on machines with enough RAM. (do not use feifei)  
-Module casa is *okay*, add these in script before running.
-```python
-from casatasks import importfits, imsubimage, imhead, exportfits
-```
-
-1. **Convolve to common beam**.
-Use [cube_smoother_casa.py](scripts/preProcess/cube_smoother_casa.py).  
-Similarly, this should be run with CASA on big computer.  
-*If the script is killed or crashes mid-process, try limiting the threads with the following command:*  
-```bash
-export OMP_NUM_THREADS=4
-```
-
-2. **Measure noise** (for making mom0, not for chi2)  
-Use this script: [cube_noiseStat.py](scripts/preProcess/cube_noiseStat.py), here need the smoothed cubes from previous step.
-
-3. **Make mom0 and error maps** (<- for fitting)  
-Use these scripts: [cube_mom0Maker.py](scripts/preProcess/cube_mom0Maker.py) for making moment zero maps and [cube_errorMap.py](scripts/preProcess/cube_errorMap.py) for making error maps.  
-
-4. **Unit conversion and reproject**  
-For RADEX modeling, maps' unit should be **K** (or K* km/s), not **Jy/beam** (or Jy/beam* km/s), so we need this step.
-Reprojection template is **CO(2-1)**, after imsmooth().
-Thought CO(3-2) has smaller FoV, CO(2-1) has 900x900 in pixel while CO(3-2) has only 864x864.
-
-### For Building Model Grid
-0. Run [radex_fluxModel.py](scripts/radex-pipeline/radex_fluxModel.py) in your projectRoot folder.  
-It will first establish folder structure for the coming work, and build the physical condition grid, and extract flux data from model for fitting.  
-WARNING: This step take lots time, run this script on server maybe a good choice...   
-
-1. Run [radex_ratioModel.py](scripts/radex-pipele/radex_ratioModel.py), not sure for what now :(
-
-### For Fitting
-1. Try [fit_fitONEpix](scripts/fit_fitONEpix.py) to fit one pixel.
-Check the informations such as chi2 contribution, NaN in flux model... before fit over the whole map.  
-
-2. Use [fit_fitMANYpix_parallel.py](scripts/fit_fitMANYpix_parallel.py) to fit pixel-by-pixel over whole map with parallel processing.  
-Don't occupy all threads of the lab server...
-
 
 ## Repository Structure
 |Folder|Description|Rating
 |---|---|---|
 [envs/](envs)|Environment configuration files (.yml or .txt)       |8
 [docs/](docs)|Documentation, notes, and something human-facing.    |-
-[data/](data)|There are `.dat` files that used for modeling.       |-
 [exp/](exp)|Test pipelines, and exploratory code.                  |0
 [scripts/](scripts)|Something good...?                             |7
 
@@ -77,11 +36,17 @@ The logs(natural language) of running [this series](../scripts/radex-pipeline) o
 Aside from lots of unnecessary details, this is quite valuable for reference, and also record the script's evolution tree. Recommended:)
 - **where-to-get-dat.md**  
 As the filename, it explains where and how to get `.dat` files. Please don't laugh because I genuinely didn't know where to find these files at first.
-I thought RADEX would download them automaticallyt?  
+I thought RADEX would download them automaticallyt?
+- **what-is-wrong00.md**
+Basically a manual for scripts in [wrong00](exp/wrong00).
+Actually scripts in that directory is technically correct, they just don't conform to the correct data processing flow (astronomy).  
+I put all they in single folder for layout neatness.  
+You might see files with the same names in [scripts](scripts), because, as I said, these code are technically correct:)
 
-### data/ 
-Data cubes from ALMA are in the local data/, I'm not sure if those are public data... so only `.dat` files here.  
-To get the `.dat`s, please check [where-to-get-dat.md](../docs/where-to-get-dat.md). (just download from [LAMDA](https://home.strw.leidenuniv.nl/~moldata/), 23333)
+
+
+
+it just doesn't conform to the correct data processing flow. 
 
 ### exp/
 Test pipelines, and exploratory code.  
