@@ -1,8 +1,12 @@
-# This script can run on blackhole:)
-# Take 5 hours to finish without Parallel processing.
+# This script can run on blackhole.
+# Take 5 hours to finish without Parallel processing, ugly but it works:)
 '''
-from fit_fitONEpix_fullComment.py, 細節的註解可以看那邊, 
-在 server(@blackhole) 上跑成功過喔喔
+from fit_fitONEpix_fullComment.py,
+細節的註解可以看那邊,
+這邊就是把幾乎一樣的東西暴力的裝進雙層回圈,
+**先 fit 一小範圍** 確定老子寫的腳本沒出什麼大錯,
+唯一不同的應該是這邊的 flux_model 是和 flux_obs 分開讀的
+在 server(blackhole) 上跑成功過喔喔
 '''
 
 ### ----------------------------- Import Module ---------------------------- ###
@@ -12,8 +16,8 @@ import time
 
 startTime = time.time()
 ### --------------------------- Path Variables ----------------------------- ###
-#projectRoot = '/home/aqing/Documents/line-modeling_Circinus' # blackhole
-projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus' # feifei
+projectRoot = '/home/aqing/Documents/line-modeling_Circinus' # blackhole
+#projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus' # feifei
 modelPath = f'{projectRoot}/data/model_npy'
 mom0Path = f'{projectRoot}/data/mom0_npy'
 emapPath = f'{projectRoot}/data/error_map'
@@ -25,7 +29,7 @@ ndmodel = 6 # nd, 5d, 6d; coarse2 的部分寫在 formatting
 caliError = 0.1 # calibration error, by Eltha
 model_shape = np.load(f'{modelPath}/flux_{ndmodel}d-coarse2_c18o-10.npy').shape # any molename can work
 
-# ((molespiece-transis), 要用 mask 掉多少 sigma 的 mom0)
+# ((molespiece-transis), sigma)
 moles_info = [('co-10',   3.0),
               ('13co-10', 3.0),
               #('c18o-10', 3.0),
@@ -33,16 +37,17 @@ moles_info = [('co-10',   3.0),
               ('13co-21', 3.0),
               ('c18o-21', 3.0),
              ]
-
+nline = len(moles_info)
 fitting_material = {} # fitting 的材料, 雙層字典君
-for molename, nsig in moles_info: # pixel independent
+for molename, nsig in moles_info:
     # Load Flux Model (.npy)
     flux_model = np.load(f'{modelPath}/flux_{ndmodel}d-coarse2_{molename}.npy')
     fitting_material[molename] = {"flux_model": flux_model}
 
 ### --------------------- Containers for Fitting Results -------------------- ###
-map_best_phy = np.full((900, 900, 6), np.nan) # 6 個 physical condition
-map_chi2_min = np.full((900, 900), np.nan) # 900*900 因為我把全部的 map 都做過重投影了, 所以才寫 900
+map_best_phy = np.full((850, 850, 6), np.nan) # 6 個 physical condition
+map_chi2_min = np.full((850, 850), np.nan) # 雖然只有 740 個 pix, 
+                                           # 但因為是認 idx, 不是認空間的, 所以還是設多一點
 
 ### ------------------ Get Physical Conditions from chi2_min ---------------- ###
 def bs2phy(chi2_array):
@@ -52,11 +57,11 @@ def bs2phy(chi2_array):
     '''
     if np.all(np.isnan(chi2_array)): # 如果整個 chi2_sum 都是 NaN, 就回傳一組 NaN
         return (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
-    
+
     best_set = np.unravel_index(np.nanargmin(chi2_array, axis=None), chi2_array.shape)
 
     Nco_best = np.round(0.2 * best_set[0] + 15., 1)
-    Tk_best = 0.1 * best_set[1] + 1. # 加了小數點, 避免他在那邊叫說 float64 怎樣的
+    Tk_best = 0.1 * best_set[1] + 1.
     nH2_best = 0.2 * best_set[2] + 2.
     X1213_best = np.round(10 * best_set[3] + 10., 1)
     X1318_best = np.round(1 * best_set[4] + 2., 1)
@@ -66,14 +71,9 @@ def bs2phy(chi2_array):
 ### ------------------------------- START! ---------------------------------- ###
 print('READY? GO!')
 for i in range(350, 551):
-    for j in range(350, 551):
+    for j in range(551, 350): # partial
         pix_y, pix_x = i, j
         pix_permitted = True # 標示 pixel 的狀態, 等下要過檢查點
-        '''
-        flux_model 不用檢查, 
-        因為在 fitONEpix 的時候已經確定
-        目前 6 條線中沒有一個人的 model 含有 NaN
-        '''
 
         # ------------- Get fiiting materials ------------- #
         for molename, nsig in moles_info:
@@ -84,8 +84,8 @@ for i in range(350, 551):
             #** flux_obs & emap 的檢查點 **#
             if np.isnan(flux_obs) or np.isnan(emap):
                 pix_permitted = False # 標示為壞 pixel
-                break # 只要一個分子壞掉，就不用跑剩下的分子了
-            
+                break # 只要一個分子壞掉, 就不用跑剩下的分子了
+
             # Error != Noise(from emap)
             error = np.sqrt(emap**2 + (caliError * flux_obs)**2)
             #** error 的檢查點 **#
@@ -99,7 +99,7 @@ for i in range(350, 551):
             fitting_material[molename]["error"] = error
 
         # ------------------- GO! or NO GO ------------------ #
-        if not pix_permitted: # 這格沒救了，填入 NaN 後直接進下一個像素
+        if not pix_permitted: # 這格沒救了, 填入 NaN 後直接進下一個 pix
             map_best_phy[pix_y, pix_x, :] = np.nan
             map_chi2_min[pix_y, pix_x] = np.nan
             print(f'WARNING: Skipped ({pix_x}, {pix_y}) due to bad data.')
@@ -117,8 +117,7 @@ for i in range(350, 551):
         print(f'({pix_x}, {pix_y}) done!', end='\r') # 好像是會清掉之前的東西
     print()
 
-np.save(f'{productPath}/fittingResult_ugly/map_chi2_min.npy', map_chi2_min)
-np.save(f'{productPath}/fittingResult_ugly/map_best_phyicalCondi.npy', map_best_phy)
-print(f'Fitting results are saved in {productPath}/fittingResult_ugly/')
+np.save(f'{productPath}/fittingResult/map_chi2Min_{nline}_partial.npy', map_chi2_min) # 因為沒寫平行處理, 所以一定是 partial
+np.save(f'{productPath}/fittingResult/map_bestPhyCondi_{nline}_partial.npy', map_best_phy)
 endTime = time.time()
-print(f'It took {(endTime - startTime):.1f} sec to finish fitting the whole map:)')
+print(f'It took {(endTime - startTime):.2f} seconds to finish fitting partial map:)')
