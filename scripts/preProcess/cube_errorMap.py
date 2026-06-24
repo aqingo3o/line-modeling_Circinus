@@ -1,5 +1,5 @@
 # Script for feifei (hard-coded path),
-# use matplotlib<3.8 (3.7.5 here) to avoid 
+# use matplotlib<3.8 (3.7.5 here) to avoid
 # "ImportError: cannot import name 'AnchoredEllipse' from 'mpl_toolkits.axes_grid1.anchored_artists'"
 '''
 Error estimation of each spectral line for modeling.
@@ -26,24 +26,24 @@ projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus'
 dataPath = f'{projectRoot}/data/alma_cube/cropped_cube' ### 先用沒smooth過的, 先測試一下
 emapPath = f'{projectRoot}/data/error_map'
 
-# (molename, band_fileName, 
+# (molename, band_fileName,
 # line-free(channel range pair), integral_range(channel))
 moles_info = [('co-10',   '3b', 
                (10, 975, 1420, 2375),   (1057, 1338)),
               ('13co-10', '3a', 
                (10, 535, 920, 1830),    (573, 844)),
               ('co-21',   '6a', 
-               (10, 1100, 186, 2310),   (1125, 1799)),
-              ('13co-21', '6a', 
+               (10, 1100, 1866, 2310),  (1125, 1799)),
+              ('13co-21', '6a',
                (10, 619, 1465, 2980),   (759, 844)),
-              ('c18o-21', '6a', 
+              ('c18o-21', '6a',
                (127, 1426, 2283, 2386), (1640, 2100)),
-              ('co-32',   '7',  
+              ('co-32',   '7',
                (10, 92, 240, 340),      (100, 233)), # Izumi
               ]
 
 # --------------------------- Get Info from Cube --------------------------- #
-cube_info = {} 
+cube_info = {}
 for molename, band, linefree_rang, _ in moles_info:
     # Load the cube
     cube = SpectralCube.read(f'{dataPath}/cube_Band{band}_{molename}_cropped.fits')
@@ -112,7 +112,6 @@ for molename, _, _, _  in moles_info:
 
     # write to FITS
     fits.writeto(fitsOut, errorMap, header_emap, overwrite=True)
-print()
 print('All error maps are saved as FITS :D')
 
 # ------------------------------- Plot Error Maps ------------------------------- #
