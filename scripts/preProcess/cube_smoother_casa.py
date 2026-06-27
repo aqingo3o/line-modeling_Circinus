@@ -1,6 +1,6 @@
 '''
 convole to the same beam, by full CASA
-Make sure {projectRoot}/data/alma_cube/smooth_cube/ is exsist
+Make sure {projectRoot}/data/alma_cube/smoothed_cube/ is exsist
 
 !! If 'casa killed', it must because RAM is explore.
 Use this command to fix: (in terminal)
