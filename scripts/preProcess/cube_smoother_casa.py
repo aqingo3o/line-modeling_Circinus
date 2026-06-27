@@ -1,33 +1,32 @@
-# Mainly from github: Hello_Circinus/miniscripts
-# A script for full CASA
 '''
-又來到的熟悉的 convole to the same beam 
-依然選擇了熟悉的 CASA
+convole to the same beam, by full CASA
+Make sure {projectRoot}/data/alma_cube/smooth_cube/ is exsist
 
-!! 如果這個腳本運行到一半 CASA 就被 killed
-可能是因為 ram 爆炸了 (Linux terminal: )
-在終端先輸入 export OMP_NUM_THREADS=4
-再進入 casa 就可以解決ヽ(｀▽´)ノ 但運行時間當然會加倍啦
-總之不要塞滿執行緒, Lab 那台好像有 12 緒吧, 全塞滿的話大 cube 會爆 ram
+!! If 'casa killed', it must because RAM is explore.
+Use this command to fix: (in terminal)
+>> export OMP_NUM_THREADS=4
+Ofcourse running time would become double :(
 
-!! 非常之建議做完 smooth 之後要用 CARTA 或是其他可以看光譜軸的方法確認 cube 有沒有壞掉,
+!! Please check spectral axis by CARTA (or something like that) after smoothing.
 (有前科的) 可能會有譜線強度在某個 channel 之後全部歸零的情況, 個人猜測很高機率是硬體的鍋
+
+!! Server(blackhole) can operate even larger cubes (9 GB) <333
 '''
 #from casatasks import importfits, imsmooth, exportfits
 import shutil
 
 # File and path
-projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus' # for feifei
-#projectRoot = '/home/aqing/Documents/line-modeling_Circinus' # for Lab Machine
+projectRoot = '/home/aqing/Documents/line-modeling_Circinus' # for Lab Machine, server(blackhole)
 dataPath = f'{projectRoot}/data/alma_cube'
 
 # Parameters
 kernel = 'gauss'
 beamSize = 3.2 # arcsec
 targetBeam = {'major': f'{beamSize}arcsec', 'minor': f'{beamSize}arcsec', 'pa': '0deg'} # set as round beam
-wanted = [  # (mole, band, restFrequency(Hz))
-    ('13co-10', '3a'), ('c18o-10', '3a'), ('co-10', '3b'),
-    ('13co-21', '6a'), ('c18o-21', '6a'), ('co-21', '6a'),
+wanted = [  # (mole, band, restFrequency(Hz)
+    ('co-10', '3b'), ('co-21', '6a'), ('co-32', '7'),
+    ('13co-10', '3a'), ('13co-21', '6a'),
+    ('c18o-21', '6a'),
 ]
 
 # Smoothing
