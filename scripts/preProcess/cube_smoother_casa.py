@@ -14,6 +14,7 @@ Ofcourse running time would become double :(
 '''
 #from casatasks import importfits, imsmooth, exportfits
 import shutil
+import time
 
 # File and path
 projectRoot = '/home/aqing/Documents/line-modeling_Circinus' # for Lab Machine, server(blackhole)
@@ -33,6 +34,7 @@ wanted = [  # (mole, band, restFrequency(Hz)
 for mole, band in wanted:
     pathIN = f'{dataPath}/cropped_cube/cube_Band{band}_{mole}_cropped.fits'
     pathOUT = f'{dataPath}/smoothed_cube/cube_Band{band}_{mole}_smooth{beamSize}as.fits'
+    timei = time.time()
 
     importfits(fitsimage=pathIN, imagename='casaIN.im', overwrite=True)
     print('Successfully import a datacube.')
@@ -44,6 +46,7 @@ for mole, band in wanted:
     exportfits(imagename='casaSMOOTH.im', fitsimage=pathOUT, overwrite=True)
     shutil.rmtree('casaIN.im')
     shutil.rmtree('casaSMOOTH.im')
-    print(f'{mole} was smoothed and metafiles are cleaned.')
+    timef = time.time()
+    print(f'{mole} was smoothed and metafiles are cleaned. (time usage: {(timef - timei):.1f} sec)')
 
 print('All Done :)')
