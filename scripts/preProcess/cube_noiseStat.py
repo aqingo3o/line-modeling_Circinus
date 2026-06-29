@@ -1,100 +1,81 @@
-# You should put this script on feifei,
-# because of the hard-coded folder path
+# Script for feifei (hard-coded path)
 '''
-How much Jy/beam of noise should be masked when generating mom0.  
-the datacubes had been cropped by CASA ({projectRoot}/data/alma_cube/cropped_cube)
-(can't do crop on feifei due to some cubes are too big.)
+How much Jy/beam of noise should be masked when generating mom0.
+
+update: 2026-06-28, Inspire by new error maps' procedure.
 '''
 
 from astropy import units as u
-import matplotlib.pyplot as plt
 import numpy as np
+from regions import Regions
 from spectral_cube import SpectralCube
+import time
 import warnings
 
 # 因為噴一堆東西有點煩煩的
 warnings.filterwarnings('ignore', message='.*PV2.*')
+warnings.filterwarnings('ignore', message='.*Stokes cube.*')
 
-# Path
+# ------------------------------- Path ------------------------------- #
 projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus'
-#dataPath = f'{projectRoot}/data/alma_cube/cropped_cube'
-dataPath = f'{projectRoot}/data/alma_cube/smoothed_cube'
+cubePath = f'{projectRoot}/data/alma_cube/smoothed_cube'
 
-# (mole_fileName, band_fileName, (blankChannel))
-moles_info = [('co-10',   '3b', (15, 86, 445, 483)),
-              ('13co-10', '3a', (56, 316, 721, 900)),
-              ('c18o-10', '3a', (182, 475, 893, 1094)),
-              ('co-21',   '6a', (86, 327, 1036, 1323)),
-              ('13co-21', '6a', (41, 257, 1012, 1544)),
-              ('c18o-21', '6a', (65, 275, 1043, 1200))
+# (molename, band_fileName, line-free(channel range pair))
+moles_info = [('co-10',   '3b', (10, 975, 1420, 2375)),
+              ('13co-10', '3a', (10, 535, 920, 1830)),
+              ('co-21',   '6a', (10, 1100, 1866, 2310)),
+              ('13co-21', '6a', (10, 619, 1465, 2980)),
+              ('c18o-21', '6a', (127, 1426, 2283, 2386)),
+              ('co-32',   '7',  (10, 92, 240, 340)), # Izumi
               ]
 
-noiseList, radiiList = [], []
+# ------------------------------- Main ------------------------------- #
+reg_co32fov = Regions.read(f'{projectRoot}/data/region/co32-fov.crtf', format='crtf')
+reg_co32nopb = Regions.read(f'{projectRoot}/data/region/co32-nopb.crtf', format='crtf')
+moles_sigma = {}
 
-# Main
-radii_step = 0.5 * u.arcsec
-for molename, band, cblank in moles_info:
-    #cube = SpectralCube.read(f'{dataPath}/cube_Band{band}_{molename}_cropped.fits') 
-    cube = SpectralCube.read(f'{dataPath}/cube_Band{band}_{molename}_smooth3.2as.fits')
-    print(f'cube_Band{band}_{molename}_smooth3.2as.fits was loaded.')
+for molename, band, lf_rang, _ in moles_info: # lf for line-free
+    print(f'---------- [{molename}] ----------')
 
-    # 以中心為中心畫圓
-    ra_crval  = cube.wcs.wcs.crval[0] * u.deg
-    dec_crval = cube.wcs.wcs.crval[1] * u.deg
-    dec_cr_rad = dec_crval.to(u.rad) # 用來修正投影用的, 因為 Circinus 有點高緯
+    # Load and crop the cubes (spatial)
+    cube = SpectralCube.read(f'{cubePath}/cube_Band{band}_{molename}_smooth3.2as.fits')
+    subcube_co32fov = cube.subcube_from_regions(reg_co32fov)
+    subcube_co32nopb = cube.subcube_from_regions(reg_co32nopb)
+    print('Two spatial sub-cubes are ready.')
 
-    dec_mat, ra_mat = cube.spatial_coordinate_map
-    delta_dec = (dec_mat - dec_crval)
-    delta_ra = (ra_mat - ra_crval) * np.cos(dec_cr_rad) 
-    dist_mat = np.sqrt(delta_ra**2 + delta_dec**2).to(u.arcsec)
- 
-    fov_r = (0.5*(dec_mat.max() - dec_mat.min())).to(u.arcsec) # field of view 的 ridius 的意思
-    noiseList_mole = [] # 次拋, 裝的是一個 mole 在各種遮罩下的噪音
-    radiiList_mole = np.arange(1, fov_r.value, step=radii_step.value)
-    '''# 因為 range() 不能處理浮點步長
-    .value 的原因是只要數值不要單位
-    '''
+    # Line-free channels of sub-cubes
+    print('Please wait for array concatenation...', end='')
+    timei = time.time()
+    linefree_co32fov = np.concatenate([subcube_co32fov[lf_rang[0]:lf_rang[1], :, :],
+                                       subcube_co32fov[lf_rang[2]:lf_rang[3], :, :]],
+                                       axis=0)
+    linefree_co32nopb = np.concatenate([subcube_co32nopb[lf_rang[0]:lf_rang[1], :, :],
+                                        subcube_co32nopb[lf_rang[2]:lf_rang[3], :, :]],
+                                        axis=0)
+    timef = time.time()
+    print(f' ({(timef - timei):.1f} sec)')
 
-    for r in radiiList_mole:
-        mask = dist_mat.value <= r # <= 的標示為 True
-        cube_masked = cube.with_mask(mask)
-        noise = 0 * (u.Jy/u.beam) # 歸零，放個單位
-        for c in cblank:
-            noise += np.nanstd(cube_masked[c].filled_data[:])
-            '''# 他媽的這邊我用超久
-            cube[c] 就是 cube 的第c個 channel
-            filled_data[:] 像是取出所有值並轉職成一維陣列？
-            因為充滿 nan 所以要用 np.nanstd()
-            '''
-        noiseList_mole.append(noise / len(cblank))
+    # sigma for mom0 making...
+    sigma_co32fov = np.nanstd(linefree_co32fov, axis=None) # None: std. for flatten array
+    sigma_co32nopb = np.nanstd(linefree_co32nopb, axis=None)
 
-    noiseList.append(noiseList_mole)
-    radiiList.append(radiiList_mole)
-    print(f'Noise statistics for {molename} was done :)')
+    print('Result of mom0 map cutoff base: (one sigma, just for preview)')
+    print(f'{sigma_co32fov:.2f} Jy/beam (co32-fov)')
+    print(f'{sigma_co32nopb:.2f} Jy/beam (co32-nopb)')
+    moles_sigma[molename] = {
+        "sigma_co32fov" : sigma_co32fov,
+        "sigma_co32nopb" : sigma_co32nopb
+    }
+print()
+print('Finish statistics of cutoff base for mom0 maps, please check the result in projectRoot/docs :)')
+    
+# --------------------------- Write Result to .txt --------------------------- #
+sigmarec = open(f'{projectRoot}/docs/mom0_sigma_cutoff_base.txt', 'w')
+sigmarec.write('format: (molename, sigma_co32fov, sigma_co32nopb)\n')
+sigmarec.write(f'and the unit of sigma is {cube.unit}\n\n') # 殘留的 cube, 單位應該大家一樣
 
-if len(noiseList)==6:
-    print('At least no BIG problem?')
-
-# plot
-# 非常髒的 顧前不顧後的寫法
-fig, ax = plt.subplots(2, 3, figsize=(10, 6)) # 不管怎麼調都是一個醜樣
-ax_flat = ax.flatten()
-for i in range(len(moles_info)):
-    noiseList_dimless = []
-    for j in noiseList[i]:
-        noiseList_dimless.append(j.value)
-    ax_flat[i].plot(radiiList[i], noiseList_dimless)
-    ax_flat[i].set_title(f'{moles_info[i][0]} noise to r_mask')
-    if i==0 or i==3:
-        ax_flat[i].set_ylabel('std (Jy/beam)')
-    if i>2:
-        ax_flat[i].set_xlabel('radius_mask (arcsec)')
-
-plt.tight_layout() # 神奇妙妙工具
-
-# Save the figure
-#fig.savefig(f'{projectRoot}/products/noiseStat_cropped.png', dpi=300, bbox_inches='tight')
-fig.savefig(f'{projectRoot}/products/figure/fig_noiseStat_smooth3.2as.png', dpi=300, bbox_inches='tight')
-print('Figure was saved.')
-
-plt.show()
+for molename in moles_sigma.keys():
+    sigma_co32fov = moles_sigma[molename]["sigma_co32fov"]
+    sigma_co32nopb = moles_sigma[molename]["sigma_co32nopb"]
+    sigmarec.write(f'{molename:<8}: ({sigma_co32fov:.6f}, {sigma_co32nopb:.6f})\n')
+sigmarec.close()
