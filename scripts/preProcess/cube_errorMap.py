@@ -19,11 +19,11 @@ import time
 import warnings
 
 warnings.filterwarnings('ignore', message='.*PV2.*')
-warnings.filterwarnings('ignore', message='Degrees of freedom <= 0 for slice')
+warnings.filterwarnings('ignore', message='.*Stokes cube.*')
 
 # ------------------------------- Path ------------------------------- #
 projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus'
-dataPath = f'{projectRoot}/data/alma_cube/cropped_cube' ### 先用沒smooth過的, 先測試一下
+dataPath = f'{projectRoot}/data/alma_cube/smoothed_cube'
 emapPath = f'{projectRoot}/data/error_map'
 
 # (molename, band_fileName,
@@ -35,7 +35,7 @@ moles_info = [('co-10',   '3b',
               ('co-21',   '6a', 
                (10, 1100, 1866, 2310),  (1125, 1799)),
               ('13co-21', '6a',
-               (10, 619, 1465, 2980),   (759, 844)),
+               (10, 619, 1465, 2980),   (759, 1278)),
               ('c18o-21', '6a',
                (127, 1426, 2283, 2386), (1640, 2100)),
               ('co-32',   '7',
@@ -46,8 +46,7 @@ moles_info = [('co-10',   '3b',
 cube_info = {}
 for molename, band, linefree_rang, _ in moles_info:
     # Load the cube
-    cube = SpectralCube.read(f'{dataPath}/cube_Band{band}_{molename}_cropped.fits')
-    #cube = SpectralCube.read(f'{dataPath}/cube_Band{band}_{molename}_smooth3.2as.fits')
+    cube = SpectralCube.read(f'{dataPath}/cube_Band{band}_{molename}_smooth3.2as.fits')
     print(f'cube_Band{band}_{molename}_cropped.fits was loaded.')
 
     # Line-free channels
@@ -129,5 +128,5 @@ for molename, _, _, _ in moles_info:
     fig_pos += 1 # 超噁爛超危險寫法但我有點懶得改了啦哈哈屁眼
 
 plt.tight_layout()
-plt.savefig(f'{projectRoot}/products/figure/fig_errorMap-new.png', dpi=300)
+plt.savefig(f'{projectRoot}/products/figure/fig_errorMap.png', dpi=300)
 plt.show()
