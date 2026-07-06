@@ -1,9 +1,8 @@
-# Script for server (blackhole)
-# Due to SpectralCube's high memory usage :(
+# Script for both server (blackhole) and feifei
 '''
 Convert flux unit from Jy/beam to Kelvin **before** cube smoothing.
 
-ref: 
+ref:
 - map_convert2Kandreproj.py
 Tech ref:
 - the equivakency -- brightness_temperature():
@@ -21,6 +20,7 @@ import warnings
 
 # 因為噴一堆東西有點煩煩的
 warnings.filterwarnings('ignore', message='.*Cube is a Stokes cube.*')
+warnings.filterwarnings('ignore', message='.*PV2_.*')
 
 # ------------------------------- Path Variables ---------------------------------- #
 projectRoot = '/home/aqing/Documents/line-modeling_Circinus' # blackhole
@@ -31,7 +31,7 @@ KPath = f'{projectRoot}/data/alma_cube/K_cube'
 # --------------------------- Constants & Variables ------------------------------- #
 fwhm2sigma = 1. / (8 * np.log(2))**0.5  # constant of Gaussian beam
 z = 0.001448 * u.dimensionless_unscaled # red shift of the Circinus
-moles_info = [('co-10',   '3b'),
+moles_info = [('co-10',    '3b'),
               #('13co-10', '3a'),
               #('co-21',   '6a'),
               #('13co-21', '6a'),
@@ -43,15 +43,18 @@ moles_info = [('co-10',   '3b'),
 count = 1
 for molename, band in moles_info:
     # Load the cube
-    cube_Jb = SpectralCube.read(f'{dataPath}/cube_Band{band}_{molename}_cropped.fits') # Jy/beam 簡稱他嗎雞ㄅ
-    cube_Jb.allow_huge_operations=True
-    header = cube_Jb.header
+    hdul = fits.open(f'{dataPath}/cube_Band{band}_{molename}_cropped.fits')
+    data_Jb = hdul[0].data.squeeze() # Jy/beam 簡稱他嗎雞ㄅ, 但其實這個 array 不帶有單位
+    header = hdul[0].header
+    hdul.close()
 
     # Prepare parameter (OmegaB & frequency)
     bmaj, bmin = header['BMAJ'] * u.deg, header['BMIN'] * u.deg      # fwhm
     OmegaB = (2 * np.pi) * (bmaj * fwhm2sigma) * (bmin * fwhm2sigma) # Beam area
 
-    freq_axis = cube_Jb.spectral_axis # array with unit (header['CUNIT3'])
+    freq_axis = SpectralCube.read(
+        f'{dataPath}/cube_Band{band}_{molename}_cropped.fits'
+        ).spectral_axis # array with unit (header['CUNIT3'])
     '''
     Usually call it 'spec_axis',
     but i'll put this into brightness_temperature equivalency,
@@ -61,16 +64,19 @@ for molename, band in moles_info:
     # Unit Convertion
     cvFactor = (1 * u.Jy/OmegaB).to(u.K, equivalencies=u.brightness_temperature(freq_axis))
     cvFactor = cvFactor.value
-    print(f"Converting intensity unit of {molename}'s cube...")
-    cube_K = cube_Jb * cvFactor[:, None, None] # this step require HUGE memory, i can't test it on feifei
-    print(f'Finish conversion ({count}/{len(moles_info)})')
+    print(f"Converting intensity unit of {molename}'s cube from {header['BUNIT']} to Kelvin...")
+    data_K = data_Jb * cvFactor[:, None, None]
+    print(f'Finish conversion. ({count}/{len(moles_info)})')
 
     # Revise Header
     header['BUNIT'] = 'K'
-    header['HISTORY'] = "Convert cube's unit from surface brightness(Jy/beam) into brightness temperature(Keelvin), by qing, 2026-07-06"
+    header['HISTORY'] = "Convert cube's unit from surface brightness(Jy/beam) into "
+    header['HISTORY'] = "brightness temperature(Kelvin), by qing, 2026-07-06"
 
     # Save as FITS
     fitsOut = f'{KPath}/cube_Band{band}_{molename}_K.fits'
-    fits.writeto(fitsOut, cube_K, header, overwrite=True) # cannot write Quantities to file.
+    fits.writeto(fitsOut, data_K, header, overwrite=True) # cannot write Quantities to file.
+    print(f'Saved cube_Band{band}_{molename}_K.fits to K_cube/.')
 
     count += 1
+print('All Done :)')
