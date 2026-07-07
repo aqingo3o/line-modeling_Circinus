@@ -7,6 +7,7 @@ Error estimation of each spectral line for modeling.
 Material: datacubes (smooth by CASA, under {projectRoot}/data/alma_cube/smooth_cube)
 
 update: 2026-06-23, After Eltha's advice.
+        2026-07-07, Revise the hard-code mesage in header and comments. (about intensity unit)
 '''
 
 from astropy import constants
@@ -72,9 +73,9 @@ for molename, band, linefree_rang, _ in moles_info:
 print()
 print('Start estimating error...')
 for molename, band, _, mom0_rang in moles_info:
-    # rms through the line free channels (σ, unit: Jy/beam)
+    # rms through the line free channels (σ, unit: Kelvin)
     linefree_cube = cube_info[molename]["linefree"]
-    sigma_rms = np.nanstd(linefree_cube, axis=0) # Jy/beam
+    sigma_rms = np.nanstd(linefree_cube, axis=0) # Kelvin
 
     # How much channels does mom0 integraled, dim-less
     N_mom0 = mom0_rang[1] - mom0_rang[0] + 1
@@ -93,12 +94,12 @@ for molename, band, _, mom0_rang in moles_info:
 # ---------------------------- Save Error Maps as FITS --------------------------- #
 header_ref_kw = ['BMAJ', 'BMIN', 'BPA', 'RESTFRQ']
 '''
-Require beam information for unit convertion. (Jy/beam*km/s --> K*km/s)
+Require beam information for futher steps (maybe)
 '''
 for molename, _, _, _  in moles_info:
     #fitsOut = f'{emapPath}/emap_{molename}_smooth3.2as.fits'
     fitsOut = f'{emapPath}/emap_{molename}.fits'
-    errorMap = cube_info[molename]["emap"].value # unit: Jy/beam*km/s, but no unit in FITS
+    errorMap = cube_info[molename]["emap"].value # unit: K*km/s, but no unit in FITS
 
     # Revise Header
     header_ref = cube_info[molename]['header']
@@ -106,7 +107,7 @@ for molename, _, _, _  in moles_info:
     for i in header_ref_kw:
         header_emap[i] = header_ref[i]
     header_emap['OBJECT'] = 'Circinus_galaxy'
-    header_emap['BUNIT'] = 'Jy.km.beam-1.s-1' # match with mom0s' unit :)
+    header_emap['BUNIT'] = 'K.km.s-1' # match with mom0s' unit :)
     header_emap['COMMENT'] = 'std. in line-free channels, by qing via SpectralCube, np.nanstd'
 
     # write to FITS
@@ -124,7 +125,7 @@ for molename, _, _, _ in moles_info:
     plt.xlabel('RA')
     plt.ylabel('Dec')
     plt.title(f"{molename}'s error map")
-    plt.colorbar(label='Noise (Jy/beam * km/s)', fraction=0.046, pad=0.04)
+    plt.colorbar(label='Noise (K * km/s)', fraction=0.046, pad=0.04)
     fig_pos += 1 # 超噁爛超危險寫法但我有點懶得改了啦哈哈屁眼
 
 plt.tight_layout()
