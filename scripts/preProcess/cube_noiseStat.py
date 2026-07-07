@@ -3,6 +3,7 @@
 How much Jy/beam of noise should be masked when generating mom0.
 
 update: 2026-06-28, Inspire by new error maps' procedure.
+        2026-07-07, Revise the hard-code message about intensity unit.
 '''
 
 from astropy import units as u
@@ -60,15 +61,15 @@ for molename, band, lf_rang in moles_info: # lf for line-free
     sigma_co32nopb = np.nanstd(linefree_co32nopb, axis=None)
 
     print('Result of mom0 map cutoff base: (one sigma, just for preview)')
-    print(f'{sigma_co32fov:.2f} Jy/beam (co32-fov)')
-    print(f'{sigma_co32nopb:.2f} Jy/beam (co32-nopb)')
+    print(f'{sigma_co32fov:.2f} K (co32-fov)')
+    print(f'{sigma_co32nopb:.2f} K (co32-nopb)')
     moles_sigma[molename] = {
         "sigma_co32fov" : sigma_co32fov,
         "sigma_co32nopb" : sigma_co32nopb
     }
 print()
 print('Finish statistics of cutoff base for mom0 maps, please check the result in projectRoot/docs :)')
-    
+
 # --------------------------- Write Result to .txt --------------------------- #
 sigmarec = open(f'{projectRoot}/docs/mom0_sigma_cutoff_base.txt', 'w')
 sigmarec.write('format: (molename, sigma_co32fov, sigma_co32nopb)\n')
