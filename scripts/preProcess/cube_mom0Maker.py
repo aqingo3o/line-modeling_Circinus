@@ -9,6 +9,7 @@ Tech ref:
 - generate and show moment maps: https://learn.astropy.org/tutorials/FITS-cubes.html#display-the-moment-maps
 
 update: 2026-06-29, new sigma values from cube_noiseStat.py
+        2026-07-07, Revise the hard-code part of intensity unit.
 '''
 
 from astropy import units as u
@@ -25,10 +26,9 @@ projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus'
 dataPath = f'{projectRoot}/data/alma_cube/smoothed_cube'
 mom0Path = f'{projectRoot}/data/mom0_map'
 
-# (molename, band, restfreq(GHz), integral_range(channel), noise(Jy/beam))
+# (molename, band, restfreq(GHz), integral_range(channel), noise(Kelvin))
 '''
 - Noise is the "sigma_co32nopb" from cube_noiseStat.py
-- I can't change rest freguency in cube header, whyyyyyyyy??
 - Integral range should be the same as that in cube_errorMap,py 
 '''
 moles_info = [('co-10',   '3b', 115.271, (1057, 1338), 0.008422),
@@ -58,7 +58,7 @@ for molename, band, f0, mom0rang, sigma in moles_info:
     # Making Moment Zero Maps  & Plot 
     for n in Nsigma:
         # Noise Masking
-        cutoffMask = slab > (n*sigma) * (u.Jy/u.beam) 
+        cutoffMask = slab > (n*sigma) * (u.K) 
         slab_masked = slab.with_mask(cutoffMask)
         # Integrating
         mom0 = slab_masked.moment(order=0)
