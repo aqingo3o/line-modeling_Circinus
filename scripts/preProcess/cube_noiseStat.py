@@ -34,7 +34,7 @@ reg_co32fov = Regions.read(f'{projectRoot}/data/region/co32-fov.crtf', format='c
 reg_co32nopb = Regions.read(f'{projectRoot}/data/region/co32-nopb.crtf', format='crtf')
 moles_sigma = {}
 
-for molename, band, lf_rang, _ in moles_info: # lf for line-free
+for molename, band, lf_rang in moles_info: # lf for line-free
     print(f'---------- [{molename}] ----------')
 
     # Load and crop the cubes (spatial)
