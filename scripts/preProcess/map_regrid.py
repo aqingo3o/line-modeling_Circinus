@@ -12,8 +12,8 @@ Tech ref:
 - reproject_adaptive:
     https://reproject.readthedocs.io/en/stable/api/reproject.reproject_adaptive.html#reproject.reproject_adaptive
 
-update: 2026-07-07, Seperate steps from convert2KReproj.py 
-                    to 1. unit convetsion (cube_convert2K.py)          
+update: 2026-07-07, Seperate steps from convert2KReproj.py
+                    to 1. unit convetsion (cube_convert2K.py)
                        2. map_regrid.py   (this script)
         2026-07-27, Use Nyquist sampling instead of CO(2-1) as regrid template.
                     Aim to speed up the fitting caculation.
@@ -83,16 +83,16 @@ that is: WCS(a_header).celestial, a kind of WCS obj.
 (print(WCS(co32_header).celestial) to gain some concept :P)
 --------------- [Inside wcs2] ---------------
 Number of WCS axes: 2
-CTYPE : 'RA---SIN' 'DEC--SIN' 
-CRVAL : 213.2914583333 -65.33916666667 
+CTYPE : 'RA---SIN' 'DEC--SIN'
+CRVAL : 213.2914583333 -65.33916666667
 CRPIX : 433.0 433.0 
-PC1_1 PC1_2  : 1.0 0.0 
-PC2_1 PC2_2  : 0.0 1.0 
-CDELT : -9.166666666667e-06 9.166666666667e-06 
+PC1_1 PC1_2  : 1.0 0.0
+PC2_1 PC2_2  : 0.0 1.0
+CDELT : -9.166666666667e-06 9.166666666667e-06
 NAXIS : 864  864
 
-Aside from CDELT1&2 (pixel size in degree), 
-NAXIS1&2 (how may pixels along two spatial axes) and 
+Aside from CDELT1&2 (pixel size in degree),
+NAXIS1&2 (how may pixels along two spatial axes) and
 CRPIX1&2 (the centeral pixel) should also be revised!
 Because these will be different b/a I change the pixel scale.
 '''
@@ -100,7 +100,7 @@ co32_header = fits.open(f'{mom0Path}/mom0_co-32_smooth3.2as_3.0sigma.fits')[0].h
 
 # Change Pixel Size (pixel scale) by Nyquist Sampling
 template_header = co32_header.copy()
-target_pixsize = 0.4 * cbeam ####
+target_pixsize = 0.1 * cbeam #### 89*89
 template_header['CDELT1'] = -target_pixsize  # RA, 向東為負, 真的相信我把 WCS(co32_header)先印出來會比較輕鬆
 template_header['CDELT2'] = target_pixsize   # DEC
 
@@ -112,8 +112,7 @@ template_header['NAXIS1'] = int(co32_header['NAXIS1'] * scale1)
 template_header['NAXIS2'] = int(co32_header['NAXIS2'] * scale2)
 template_header['CRPIX1'] = (co32_header['CRPIX1'] - 1) * scale1
 template_header['CRPIX2'] = (co32_header['CRPIX2'] - 1) * scale2
-
-print(template_header['crpix1'], template_header['crpix2'])
+print(f"New data_shape is: {(template_header['NAXIS1'], template_header['NAXIS2'])}")
 
 # Get Regrid WCS template
 template_wcs2 = WCS(template_header).celestial
@@ -124,6 +123,10 @@ for fn in maps_info.keys():
     # Prepare Meterial
     the_map = maps_info[fn]["data"]
     the_wcs2 = WCS(maps_info[fn]["header"]).celestial
+    """
+    print('Pixel size before regrid:', end='')
+    print(f'{(abs(maps_info[fn]["header"]["cdelt1"] * 3600)):.2f} arcsec')
+    """
 
     # Upsampling (Reprojecting) ...
     data_regrid, _ = reproject_adaptive((the_map, the_wcs2), template_wcs2)
