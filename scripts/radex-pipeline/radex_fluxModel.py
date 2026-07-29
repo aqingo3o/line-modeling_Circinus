@@ -3,6 +3,9 @@
 # You MUST put this script under your project root (i.e. ~/line-modeling_Circinus/thisScript.py)
 # 對如果要把這個腳本放進 projectRoot/scripts/ 的話, 請跑完之後再放, 雖然很怪洨但先這樣吧?
 '''
+update: 2026-07-28, Change physical condition range, find history on my github.
+                    New model is save to folders named "_iset"!
+
 程式湯底來自 Eltha 女士的 radex_pipeline.py, flux_model_6d.py, 
 對標寒假的工作算是 radex-pipeline_setFolder-modiPath-add6d.py, 
 盡量的改變了檔案命名的方式, 但因為牽涉到平行處理, 有些地方我不敢亂動
@@ -12,7 +15,7 @@
 因為 radex-pipeline 系列的工作會有很多寫入檔案的機會, 所以對於相同命名的環境要求有點多
 因此, 就算還沒有開始處理 cube, moment maps, 也可以先跑這支程式喔
 ----------------------------------------------------------------------------------
-然後這支程式真的狗幹長, 所以提供了目錄
+然後這支程式真的狗幹長, 所以提供了[目錄]
 - Import Module
 - Build Folder Structure
 - Path Variables
@@ -32,7 +35,6 @@
 - Containers for File Saving
 - Construct 3D - 5D flux models (initial shape)
 - Construct 5D Flux Models
-- Construct 5D Ratio Models
 - Construct 6D Flux Models
 
 ### Write Time Records
@@ -45,6 +47,7 @@ from pathlib import Path
 import time
 
 # -------------------------- Build Folder Structure ---------------------------- #
+'''
 print('Start building suitable folder structure for radex pipeline...')
 projectRoot = Path(__file__).resolve().parents[0] # line-modeling_Circinus, no slash
 projectRoot_member = ['data', 'docs', 'exp', 'products', 'scripts', 'src'] # first-level
@@ -68,10 +71,12 @@ for i in under_radexio: # third-level
         os.makedirs(ioPath_sub)
 print('Folder structure is ok :)')
 print()
+'''
 
 # ------------------------------- Path Variables ---------------------------------- #
-radexioPath = f'{projectRoot}/data/radex_io' # 巨幅檔案數目的那個
-npyPath = f'{projectRoot}/data/model_npy'    # extract flux 的那些
+projectRoot = '/home/aqing/Documents/line-modeling_Circinus'
+radexioPath = f'{projectRoot}/data/radex_io_iset' # 巨幅檔案數目的那個
+npyPath = f'{projectRoot}/data/model_npy_iset'    # extract flux 的那些
 model_5d = '5d-coarse2' # level3 那邊相依的, 至今未知用途...
 model_6d = '6d-coarse2'
 
@@ -79,25 +84,25 @@ model_6d = '6d-coarse2'
 start_time = time.time()
 # -------------------------------- Basic Variables -------------------------------- #
 num_cores = 20 # joblib
-linewidth = 15 # km/s
+linewidth = 300 # km/s
 molecule_0 = 'co'
 molecule_1 = '13co'
 molecule_2 = 'c18o'
 
 # ----------------------------- Physical Conditions Grid ---------------------------- #
-Nco = np.arange(15., 20.1, 0.2)
-Tkin = np.arange(1., 2.8, 0.1)
-nH2 = np.arange(2., 5.1, 0.2) # step size for Nco and nH2 should be the same
-X_13co = np.arange(10, 205, 10)
-X_c18o = np.arange(2, 21, 1)
+Nco = np.arange(12., 21.1, step=0.2)
+Tkin = np.arange(1., 3.1,  step=0.1)
+nH2 = np.arange(2.,  7.1,  step=0.2) # step size for Nco and nH2 should be the same
+X_13co = np.arange(10, 126, step=10)
+X_c18o = np.arange(2, 21,   step=1)
 round_dens, round_temp = 1, 1
 
 # ----------------------------------- Pre-processing -------------------------------- #
-incr_dens = round(Nco[1] - Nco[0],1)
-incr_temp = round(Tkin[1] - Tkin[0],1)
+incr_dens = round(Nco[1] - Nco[0], 1)
+incr_temp = round(Tkin[1] - Tkin[0], 1)
 diff_Tk = Tkin[1] - Tkin[0]
-co_dex = np.round(10**np.arange(0.,1.,incr_dens), 4)
-Tk_dex = np.round(10**np.arange(0.,1.,incr_temp), 4)
+co_dex = np.round(10**np.arange(0., 1., incr_dens), 4)
+Tk_dex = np.round(10**np.arange(0., 1., incr_temp), 4)
 factors_13co = 1./X_13co  
 factors_c18o = 1./X_c18o
 num_Nco = Nco.shape[0]
@@ -393,7 +398,7 @@ for molesp, _ in mole_info: # reshape the initial flux model to 5d
 
 for molename in flux_model.keys(): # Save "flux_5d" into .npy
     np.save(f'{npyPath}/flux_{model_5d}_{molename}.npy', flux_model[molename]["flux_5d"]) # (filename) modi by qing (20260317)
-    
+
 ratio5d_time = time.time()
 
 # ---------------------------------- Construct 6D Flux Models --------------------------------- #
@@ -418,7 +423,7 @@ print('Flux_6d models saved.')
 flux6d_time = time.time()
 
 ### ------------------------------- Write Time Records ------------------------------------ ###
-timerec = open(f'{projectRoot}/docs/radex-pipeline_timeRecord.txt', 'w') # made by qing (20260113)
+timerec = open(f'{projectRoot}/docs/radex-pipeline_timeRecord_iset.txt', 'w') # made by qing (20260113)
 timerec.write(f'It took {(input_time - start_time):.2f} seconds to write all .inp files.\n')
 timerec.write(f'It took {(radex_time - input_time):.2f} seconds to finish running RADEX.\n')
 timerec.write(f'It took {(fluxini_time - radex_time):.2f} seconds to save 3d, 4d, 5d flux models.\n')
