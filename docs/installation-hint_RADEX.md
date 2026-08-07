@@ -129,4 +129,4 @@ file.close()
 # run radex
 os.system(f'radex < inputfile.inp')
 ```
-詳盡一點可以參考[這裡](../scripts/radex_fluxModel.py)（需要找一下...很多不相關部分啊哈）
+詳盡一點可以參考[這裡](../scripts/radex-pipeline/radex_fluxModel.py)（需要找一下...很多不相關部分啊哈）
