@@ -7,7 +7,10 @@
 但為了後續復現的方便 && 這隻程式高度資料夾路徑依賴
 為了防止程式開始跑了才發現很多東西不存在, 我保留了自動建立檔案結構的部分。
 
-程式湯底來自 Eltha 女士的 radex_pipeline.py, flux_model_6d.py, 
+程式湯底來自 Eltha 女士的 radex_pipeline.py, flux_model_6d.py
+
+目前的版本刪掉了 Abudance ratio
+因為不知道可拿這些做蛇麼, 少點參數我還可以算 reduce chi2
 ----------------------------------------------------------------------------------
 然後這支程式真的狗幹長, 所以提供了[目錄]
 - Import Module
@@ -74,13 +77,14 @@ projectRoot = '/home/aqing/Documents/line-modeling_Circinus' # blackhole
 projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus' # feifei
 radexioPath = f'{projectRoot}/data/radex_io' # a VAST number of files
 npyPath = f'{projectRoot}/data/model_npy'    # extracted flux model
-d_with_bf = '5d' # model's dimensiom with beam filling factor
+d_with_bf = '4d' # model's dimensiom with beam filling factor
 
 ### ------------------------------ RADEX Pipeline ------------------------------- ###
 start_time = time.time()
 # -------------------------------- Basic Variables -------------------------------- #
 num_cores = 20 # joblib
 linewidth = 300 # km/s
+phy_para = ['Kinetic Temperature', 'Number Density', 'Column Density'] # keys of model_grid
 mole0 = 'co'
 mole1 = '13co'
 mole2 = 'c18o'
@@ -90,7 +94,7 @@ mole2 = 'c18o'
 就這邊的東西可以改,
 應該說下面可以改的東西就剩檔名了
 '''
-expstep_Tk = 0.1
+expstep_Tk = 1
 expstep_nH2 = 0.2
 expstep_Nco = expstep_nH2 # step size for Nco and nH2 should be the same (idky)
 '''
@@ -102,86 +106,88 @@ Tk_exp = np.arange(1., 2.8,  step=expstep_Tk)    # 前面的經驗說, 要從整
 nH2_exp = np.arange(2.,  6.1,  step=expstep_nH2) # 多的那 .1 是因為 arange() 會在終點前停下
 Nco_exp = np.arange(15., 20.1, step=expstep_Nco) # 多家的那一點(小於step)是為了確保能停在預期的數字
 '''
-# FOR TEST
-Tk_exp = np.arange(1., 1.6,  step=expstep_Tk)
-nH2_exp = np.arange(2.,  3.7,  step=expstep_nH2)
-Nco_exp = np.arange(15., 16.1, step=expstep_Nco)
-# FOR TEST
 
-Tk_coe = np.arange(1, 10, step=1)
-nH2_coe = np.arange(1, 10, step=1)
-Nco_coe = np.arange(1, 10, step=1) # 先這樣試試?
+model_grid = {
+    "Kinetic Temperature": {
+        "coeArray": np.arange(1, 3, step=1),
+        "expArray": np.arange(1., 3,  step=expstep_Tk),
+    },
+    "Number Density": {
+        "coeArray": np.arange(1, 3, step=1),
+        "expArray": np.arange(2.,  2.9,  step=expstep_nH2),
+    },
+    "Column Density": {
+        "coeArray": np.arange(1, 3, step=1),
+        "expArray": np.arange(15., 15.9, step=expstep_Nco),
+    },
+}
 
-X_13co = np.arange(10, 126, step=10)
-X_c18o = np.arange(2, 21,   step=1)
 
 # ----------------------------------- Pre-processing -------------------------------- #
-factors_13co = 1./X_13co  
-factors_c18o = 1./X_c18o
+for paraname in phy_para:
+    aeb = []
+    for exp in model_grid[paraname]["expArray"]:
+        for coe in model_grid[paraname]["coeArray"]:
+            aeb.append(f'{coe}e{round(exp, 1)}')
+    model_grid[paraname]["AeB"] = np.array(aeb) # 驚天超爛名字
 
-num_Tk_exp = len(Tk_exp)
-num_nH2_exp = len(nH2_exp)
-num_Nco_exp = len(Nco_exp)
-num_Tk_coe = len(Tk_coe)
-num_nH2_coe = len(nH2_coe)
-num_Nco_coe = len(Nco_coe)
-num_X1213 = len(X_13co)
-num_X1318 = len(X_c18o)
 
 # ------------------------------- def writeInputs_m*(): ------------------------------ #
-def writeInputs_m0(i, j, k):
+def writeInputs_m0(Tk, nH2, Nco):
+    file = open(f'{radexioPath}/input_{mole0}/{Tk}_{nH2}_{Nco}.inp', 'w')
+    file.write(f'{mole0}.dat\n')
+    file.write(f'{radexioPath}/output_{mole0}/{Tk}_{nH2}_{Nco}.out\n')
+    file.write('100 500\n')
+    file.write(f'{Tk}\n')
+    file.write('1\n')
+    file.write('H2\n')
+    file.write(f'{nH2}\n')
+    file.write('2.73'+'\n')
+    file.write(f'{Nco}\n')
+    file.write(f'{linewidth}\n')
+    file.write('0\n')
+    file.close()
+
+Parallel(n_jobs=num_cores)(
+    delayed(writeInputs_m0)(Tk ,nH2, Nco)
+    for Nco in model_grid["Column Density"]["AeB"]
+    for nH2 in model_grid["Number Density"]["AeB"]
+    for Tk in model_grid["Kinetic Temperature"]["AeB"]
+    )
+
+'''
+def writeInputs_m1(i,j,k):
+    pre_Tk = Tk_coe[i%num_Tk_coe]
+    pre_nH2 = nH2_coe[j%num_nH2_coe]
+    pre_Nco = Nco_coe[k%num_Nco_coe]
+
     pow_Tk = i//num_Tk_coe + int(Tk_exp[0])
-    Tk = round(expstep_Tk*i + int(Tk_exp[0]), 1)
     pow_nH2 = j//num_nH2_coe + int(nH2_exp[0])
     pow_Nco = k//num_Nco_coe + int(Nco_exp[0])
     
-    pre_Tk = Tk_coe[i%num_Tk_coe]
-    pre_nH2 = str(nH2_coe[j%num_nH2_coe])
-    pre_Nco = Nco_coe[k%num_Nco_coe]
-
-    file = open(f'{radexioPath}/input_{mole0}/{Tk}_{round(pre_nH2, 1)}e{pow_nH2}_{round(pre_Nco, 1)}e{pow_Nco}.inp', 'w')
-    file.write(f'{mole0}.dat\n')
-    file.write(f'{radexioPath}/output_{mole0}/{Tk}_{round(pre_nH2, 1)}e{pow_nH2}_{round(pre_Nco, 1)}e{pow_Nco}.out\n')
-    file.write('100 400\n')
+    file = open(f'{radexioPath}/input_{mole1}/{pre_Tk}e{pow_Tk}_{pre_nH2}e{pow_nH2}_{round(pre_Nco, 1)}e{pow_Nco}.inp', 'w')
+    file.write(f'{mole1}.dat\n')
+    file.write(f'{radexioPath}/output_{mole1}/{pre_Tk}e{pow_Tk}_{pre_nH2}e{pow_nH2}_{round(pre_Nco, 1)}e{pow_Nco}.out\n')
+    file.write('100 500\n')
     file.write(f'{pre_Tk}e{pow_Tk}\n')
     file.write('1\n')
     file.write('H2\n')
     file.write(f'{pre_nH2}e{pow_nH2}\n')
     file.write('2.73'+'\n')
-    file.write(f'{pre_Nco}e{pow_Nco}\n')
-    file.write(linewidth+'\n')
+    file.write(f'{round(pre_Nco, 4)}e{pow_Nco}\n')
+    file.write(f'{linewidth}\n')
     file.write('0\n')
-    file.close() 
+    file.close()
 
-def write_inputs_m1(i,j,k,m):
-    powi = str(i//cycle_temp + int(Tk_exp[0]))
-    Tk = str(round(expstep_Tk*i + int(Tk_exp[0]), round_temp))
-    powj = j//cycle_dens + int(nH2_exp[0])
-    n_h2 = str(powj)
-    N_co = str(k//cycle_dens + int(Nco_exp[0]))
-    
-    prei = str(Tk_dex[i%cycle_temp])
-    prej = str(co_dex[j%cycle_dens])
-    prej_r = str(round(co_dex[j%cycle_dens], round_dens))
-    prek = str(round(factors_13co[m]*co_dex[k%cycle_dens],4))
-    x13co = str(X_13co[m])
-    codex = str(round(co_dex[k%cycle_dens], round_dens))
-
-    file = open(f'{radexioPath}/input_{mole1}/{Tk}_{prej_r}e{n_h2}_{codex}e{N_co}_{x13co}.inp', 'w')
-    file.write(f'{mole1}.dat\n')
-    file.write(f'{radexioPath}/output_{mole1}/{Tk}_{prej_r}e{n_h2}_{codex}e{N_co}_{x13co}.out\n')
-    file.write('100'+' '+'400'+'\n')
-    file.write(prei+'e'+powi+'\n')
-    file.write('1\n')
-    file.write('H2\n')
-    file.write(prej+'e'+n_h2+'\n')
-    file.write('2.73'+'\n')
-    file.write(prek+'e'+N_co+'\n')
-    file.write(linewidth+'\n')
-    file.write('0\n')
-    file.close()   
-
-def write_inputs_m2(i,j,k,m,n):
+Parallel(n_jobs=num_cores)(
+    delayed(writeInputs_m1)(i,j,k)
+    for k in range(num_Nco_exp)
+    for j in range(num_nH2_exp)
+    for i in range(num_Tk_exp)
+    )
+'''
+"""
+def writeInputs_m2(i,j,k,m,n):
     powi = str(i//cycle_temp + int(Tk_exp[0]))
     Tk = str(round(expstep_Tk*i + int(Tk_exp[0]), round_temp))
     powj = j//cycle_dens + int(nH2_exp[0])
@@ -211,7 +217,7 @@ def write_inputs_m2(i,j,k,m,n):
     file.close()
 
 # --------------------------------- def run_radex_m*(): -------------------------------- #
-def run_radex_m0(i,j,k):
+def runRADEX_m0(i,j,k):
     powj = j//cycle_dens + int(nH2[0])
     Tk = str(round(diff_Tk*i + int(Tkin[0]), round_temp))
     n_h2 = str(powj)
@@ -222,7 +228,7 @@ def run_radex_m0(i,j,k):
     run = os.system(f'radex < {radexioPath}/input_{mole0}/{Tk}_{prej_r}e{n_h2}_{codex}e{N_co}.inp')
     return run
 
-def run_radex_m1(i,j,k,m):
+def runRADEX_m1(i,j,k):
     powj = j//cycle_dens + int(nH2[0])
     Tk = str(round(diff_Tk*i + int(Tkin[0]), round_temp))
     n_h2 = str(powj)
@@ -234,7 +240,7 @@ def run_radex_m1(i,j,k,m):
     run = os.system(f'radex < {radexioPath}/input_{mole1}/{Tk}_{prej_r}e{n_h2}_{codex}e{N_co}_{x13co}.inp')
     return run
 
-def run_radex_m2(i,j,k,m,n):
+def runRADEX_m2(i,j,k):
     powj = j//cycle_dens + int(nH2[0])
     Tk = str(round(diff_Tk*i + int(Tkin[0]), round_temp))
     n_h2 = str(powj)
@@ -247,29 +253,26 @@ def run_radex_m2(i,j,k,m,n):
     run = os.system(f'radex < {radexioPath}/input_{mole2}/{Tk}_{prej_r}e{n_h2}_{codex}e{N_co}_{x13co}_{xc18o}.inp')
     return run
 
-"""
+
 # --------------- Use Functions write_inputs_m*() for molecules0,1,2 ------------------- #
 print('Start to write .inp files...')
 Parallel(n_jobs=num_cores)(
-    delayed(write_inputs_m0)(i,j,k)
-    for k in range(num_Nco)
-    for j in range(num_nH2)
-    for i in range(num_Tk)
-    )              
+    delayed(writeInputs_m0)(i,j,k)
+    for k in range(num_Nco_exp)
+    for j in range(num_nH2_exp)
+    for i in range(num_Tk_exp)
+    )             
 Parallel(n_jobs=num_cores)(
-    delayed(write_inputs_m1)(i,j,k,m)
-    for m in range(0,num_X12to13)
-    for k in range(num_Nco)
-    for j in range(num_nH2)
-    for i in range(num_Tk)
+    delayed(writeInputs_m1)(i,j,k)
+    for k in range(num_Nco_exp)
+    for j in range(num_nH2_exp)
+    for i in range(num_Tk_exp)
     )
 Parallel(n_jobs=num_cores)(
-    delayed(write_inputs_m2)(i,j,k,m,n)
-    for n in range(0,num_X13to18)
-    for m in range(0,num_X12to13)
-    for k in range(num_Nco)
-    for j in range(num_nH2)
-    for i in range(num_Tk)
+    delayed(writeInputs_m2)(i,j,k)
+    for k in range(num_Nco_exp)
+    for j in range(num_nH2_exp)
+    for i in range(num_Tk_exp)
     )
 input_time = time.time()
 print(f'It took {(input_time - start_time):.2f} seconds to write all .inp files.')
@@ -277,25 +280,22 @@ print(f'It took {(input_time - start_time):.2f} seconds to write all .inp files.
 # ------------------------- Run RADEX for molecules 0,1,2 ------------------------------ #
 print('Start RADEXing ...')
 Parallel(n_jobs=num_cores)(
-    delayed(run_radex_m0)(i,j,k)
-    for k in range(num_Nco)
-    for j in range(num_nH2)
-    for i in range(num_Tk)
+    delayed(runRADEX_m0)(i,j,k)
+    for k in range(num_Nco_exp)
+    for j in range(num_nH2_exp)
+    for i in range(num_Tk_exp)
     )  
 Parallel(n_jobs=num_cores)(
-    delayed(run_radex_m1)(i,j,k,m)
-    for m in range(0,num_X12to13)
-    for k in range(num_Nco)
-    for j in range(num_nH2)
-    for i in range(num_Tk)
+    delayed(runRADEX_m1)(i,j,k)
+    for k in range(num_Nco_exp)
+    for j in range(num_nH2_exp)
+    for i in range(num_Tk_exp)
     )          
 Parallel(n_jobs=num_cores)(
-    delayed(run_radex_m2)(i,j,k,m,n)
-    for n in range(0,num_X13to18)
-    for m in range(0,num_X12to13)
-    for k in range(num_Nco)
-    for j in range(num_nH2)
-    for i in range(num_Tk)
+    delayed(runRADEX_m2)(i,j,k,m,n)
+    for k in range(num_Nco_exp)
+    for j in range(num_nH2_exp)
+    for i in range(num_Tk_exp)
     )
 radex_time = time.time()
 print(f'It took {(radex_time - input_time):.2f} seconds to finish running RADEX.')
