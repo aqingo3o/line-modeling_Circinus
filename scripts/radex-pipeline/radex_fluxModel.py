@@ -37,14 +37,16 @@
 ### Write Time Records
 '''
 
-# ------------------------------- Import Module ------------------------------- #
+# -------------------------- Import Module --------------------------- #
 from joblib import Parallel, delayed
 import numpy as np
 import os
 from pathlib import Path
+import subprocess
+import tempfile
 import time
 
-# -------------------------- Build Folder Structure ---------------------------- #
+# ---------------------- Build Folder Structure ---------------------- #
 '''
 print('Start creating folder structure for radex_fluxModel.py ...')
 projectRoot = Path(__file__).resolve().parents[0] # line-modeling_Circinus, no slash
@@ -72,71 +74,61 @@ print('Dependency folder strucrure is now OK :D')
 print()
 '''
 
-# ------------------------------- Path Variables ---------------------------------- #
+# -------------------------- Path Variables -------------------------- #
 projectRoot = '/home/aqing/Documents/line-modeling_Circinus' # blackhole
 projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus' # feifei
 radexioPath = f'{projectRoot}/data/radex_io' # a VAST number of files
 npyPath = f'{projectRoot}/data/model_npy'    # extracted flux model
 d_with_bf = '4d' # model's dimensiom with beam filling factor
 
-### ------------------------------ RADEX Pipeline ------------------------------- ###
+### ------------------------ RADEX Pipeline ------------------------ ###
 start_time = time.time()
-# -------------------------------- Basic Variables -------------------------------- #
+# ------------------------- Basic Variables ------------------------- #
 num_cores = 20 # joblib
 linewidth = 300 # km/s
 phy_para = ['Kinetic Temperature', 'Number Density', 'Column Density'] # keys of model_grid
-mole0 = 'co'
-mole1 = '13co'
-mole2 = 'c18o'
+molesp = ['co', 
+          #'13co', 'c18o'
+          ]
+transis = ['10', '21', '32', '43'] # (i think) model grids should cover everything
 
-# ------------------------- Set Physical Conditions Range ---------------------------- #
-'''
-就這邊的東西可以改,
-應該說下面可以改的東西就剩檔名了
-'''
-expstep_Tk = 1
+# ----------------- Set Physical Conditions Range ------------------- #
+expstep_Tk = 0.1
 expstep_nH2 = 0.2
 expstep_Nco = expstep_nH2 # step size for Nco and nH2 should be the same (idky)
 '''
 stepex_*: 指數部分的 step
 i.e. Tkin -> 10^1, 10^1.1, 10^1.2, ... 10^2.7
 '''
-'''
-Tk_exp = np.arange(1., 2.8,  step=expstep_Tk)    # 前面的經驗說, 要從整數開始 but idky
-nH2_exp = np.arange(2.,  6.1,  step=expstep_nH2) # 多的那 .1 是因為 arange() 會在終點前停下
-Nco_exp = np.arange(15., 20.1, step=expstep_Nco) # 多家的那一點(小於step)是為了確保能停在預期的數字
-'''
-
-model_grid = {
+model_grid = { 
     "Kinetic Temperature": {
-        "coeArray": np.arange(1, 3, step=1),
-        "expArray": np.arange(1., 3,  step=expstep_Tk),
+        "fracExp": np.arange(0.7, 2.9,  step=expstep_Tk),  # fracExp 代表在指數部分含有小數
     },
     "Number Density": {
-        "coeArray": np.arange(1, 3, step=1),
-        "expArray": np.arange(2.,  2.9,  step=expstep_nH2),
+        "fracExp": np.arange(2.,  6.1,  step=expstep_nH2), # 多的那 .1 是因為 arange() 會在終點前停下
     },
     "Column Density": {
-        "coeArray": np.arange(1, 3, step=1),
-        "expArray": np.arange(15., 15.9, step=expstep_Nco),
+        "fracExp": np.arange(15., 20.1, step=expstep_Nco),
     },
 }
 
-
-# ----------------------------------- Pre-processing -------------------------------- #
+# -------------------------- Pre-processing -------------------------- #
 for paraname in phy_para:
     aeb = []
-    for exp in model_grid[paraname]["expArray"]:
-        for coe in model_grid[paraname]["coeArray"]:
-            aeb.append(f'{coe}e{round(exp, 1)}')
+    for fexp in model_grid[paraname]["fracExp"]:
+        coe = 10 ** (fexp - int(fexp)) # fexp 的非整數部分會轉生成係數
+        aeb.append(f'{round(coe, 4)}e{int(fexp)}') # (10^exp非整數部分)e(fexp整數部分)
+        '''
+        我知道有類似 f-string 的方法可以更優雅地完成這件事
+        但是個人認為這個東西的可讀性比較高
+        '''
     model_grid[paraname]["AeB"] = np.array(aeb) # 驚天超爛名字
 
-
-# ------------------------------- def writeInputs_m*(): ------------------------------ #
-def writeInputs_m0(Tk, nH2, Nco):
-    file = open(f'{radexioPath}/input_{mole0}/{Tk}_{nH2}_{Nco}.inp', 'w')
-    file.write(f'{mole0}.dat\n')
-    file.write(f'{radexioPath}/output_{mole0}/{Tk}_{nH2}_{Nco}.out\n')
+# --------------------------- writeInputs(): --------------------------- #
+def writeInputs(mole, Tk, nH2, Nco):
+    file = open(f'{radexioPath}/input_{mole}/{Tk}_{nH2}_{Nco}.inp', 'w')
+    file.write(f'{mole}.dat\n')
+    file.write(f'{radexioPath}/output_{mole}/{Tk}_{nH2}_{Nco}.out\n')
     file.write('100 500\n')
     file.write(f'{Tk}\n')
     file.write('1\n')
@@ -148,207 +140,130 @@ def writeInputs_m0(Tk, nH2, Nco):
     file.write('0\n')
     file.close()
 
-Parallel(n_jobs=num_cores)(
-    delayed(writeInputs_m0)(Tk ,nH2, Nco)
-    for Nco in model_grid["Column Density"]["AeB"]
-    for nH2 in model_grid["Number Density"]["AeB"]
-    for Tk in model_grid["Kinetic Temperature"]["AeB"]
-    )
-
-'''
-def writeInputs_m1(i,j,k):
-    pre_Tk = Tk_coe[i%num_Tk_coe]
-    pre_nH2 = nH2_coe[j%num_nH2_coe]
-    pre_Nco = Nco_coe[k%num_Nco_coe]
-
-    pow_Tk = i//num_Tk_coe + int(Tk_exp[0])
-    pow_nH2 = j//num_nH2_coe + int(nH2_exp[0])
-    pow_Nco = k//num_Nco_coe + int(Nco_exp[0])
-    
-    file = open(f'{radexioPath}/input_{mole1}/{pre_Tk}e{pow_Tk}_{pre_nH2}e{pow_nH2}_{round(pre_Nco, 1)}e{pow_Nco}.inp', 'w')
-    file.write(f'{mole1}.dat\n')
-    file.write(f'{radexioPath}/output_{mole1}/{pre_Tk}e{pow_Tk}_{pre_nH2}e{pow_nH2}_{round(pre_Nco, 1)}e{pow_Nco}.out\n')
-    file.write('100 500\n')
-    file.write(f'{pre_Tk}e{pow_Tk}\n')
-    file.write('1\n')
-    file.write('H2\n')
-    file.write(f'{pre_nH2}e{pow_nH2}\n')
-    file.write('2.73'+'\n')
-    file.write(f'{round(pre_Nco, 4)}e{pow_Nco}\n')
-    file.write(f'{linewidth}\n')
-    file.write('0\n')
-    file.close()
-
-Parallel(n_jobs=num_cores)(
-    delayed(writeInputs_m1)(i,j,k)
-    for k in range(num_Nco_exp)
-    for j in range(num_nH2_exp)
-    for i in range(num_Tk_exp)
-    )
-'''
-"""
-def writeInputs_m2(i,j,k,m,n):
-    powi = str(i//cycle_temp + int(Tk_exp[0]))
-    Tk = str(round(expstep_Tk*i + int(Tk_exp[0]), round_temp))
-    powj = j//cycle_dens + int(nH2_exp[0])
-    n_h2 = str(powj)
-    N_co = str(k//cycle_dens + int(Nco_exp[0]))
-    
-    prei = str(Tk_dex[i%cycle_temp])
-    prej = str(co_dex[j%cycle_dens])
-    prej_r = str(round(co_dex[j%cycle_dens], round_dens))
-    prek = str(round(factors_c18o[n]*factors_13co[m]*co_dex[k%cycle_dens],6))
-    x13co = str(X_13co[m])
-    xc18o = str(X_c18o[n])
-    codex = str(round(co_dex[k%cycle_dens], round_dens))
-
-    file = open(f'{radexioPath}/input_{mole2}/{Tk}_{prej_r}e{n_h2}_{codex}e{N_co}_{x13co}_{xc18o}.inp', 'w')
-    file.write(f'{mole2}.dat\n')
-    file.write(f'{radexioPath}/output_{mole2}/{Tk}_{prej_r}e{n_h2}_{codex}e{N_co}_{x13co}_{xc18o}.out\n')
-    file.write('100'+' '+'400'+'\n')
-    file.write(prei+'e'+powi+'\n')
-    file.write('1\n')
-    file.write('H2\n')
-    file.write(prej+'e'+n_h2+'\n')
-    file.write('2.73'+'\n')
-    file.write(prek+'e'+N_co+'\n')
-    file.write(str(linewidth)+'\n')
-    file.write('0\n')
-    file.close()
-
-# --------------------------------- def run_radex_m*(): -------------------------------- #
-def runRADEX_m0(i,j,k):
-    powj = j//cycle_dens + int(nH2[0])
-    Tk = str(round(diff_Tk*i + int(Tkin[0]), round_temp))
-    n_h2 = str(powj)
-    N_co = str(k//cycle_dens + int(Nco[0]))
-    
-    prej_r = str(round(co_dex[j%cycle_dens], round_dens))
-    codex = str(round(co_dex[k%cycle_dens], round_dens))
-    run = os.system(f'radex < {radexioPath}/input_{mole0}/{Tk}_{prej_r}e{n_h2}_{codex}e{N_co}.inp')
-    return run
-
-def runRADEX_m1(i,j,k):
-    powj = j//cycle_dens + int(nH2[0])
-    Tk = str(round(diff_Tk*i + int(Tkin[0]), round_temp))
-    n_h2 = str(powj)
-    N_co = str(k//cycle_dens + int(Nco[0]))
-    
-    prej_r = str(round(co_dex[j%cycle_dens], round_dens))
-    x13co = str(X_13co[m])
-    codex = str(round(co_dex[k%cycle_dens], round_dens)) 
-    run = os.system(f'radex < {radexioPath}/input_{mole1}/{Tk}_{prej_r}e{n_h2}_{codex}e{N_co}_{x13co}.inp')
-    return run
-
-def runRADEX_m2(i,j,k):
-    powj = j//cycle_dens + int(nH2[0])
-    Tk = str(round(diff_Tk*i + int(Tkin[0]), round_temp))
-    n_h2 = str(powj)
-    N_co = str(k//cycle_dens + int(Nco[0]))
-    
-    prej_r = str(round(co_dex[j%cycle_dens], round_dens))    
-    x13co = str(X_13co[m])
-    xc18o = str(X_c18o[n])
-    codex = str(round(co_dex[k%cycle_dens], round_dens))  
-    run = os.system(f'radex < {radexioPath}/input_{mole2}/{Tk}_{prej_r}e{n_h2}_{codex}e{N_co}_{x13co}_{xc18o}.inp')
-    return run
-
-
-# --------------- Use Functions write_inputs_m*() for molecules0,1,2 ------------------- #
-print('Start to write .inp files...')
-Parallel(n_jobs=num_cores)(
-    delayed(writeInputs_m0)(i,j,k)
-    for k in range(num_Nco_exp)
-    for j in range(num_nH2_exp)
-    for i in range(num_Tk_exp)
-    )             
-Parallel(n_jobs=num_cores)(
-    delayed(writeInputs_m1)(i,j,k)
-    for k in range(num_Nco_exp)
-    for j in range(num_nH2_exp)
-    for i in range(num_Tk_exp)
-    )
-Parallel(n_jobs=num_cores)(
-    delayed(writeInputs_m2)(i,j,k)
-    for k in range(num_Nco_exp)
-    for j in range(num_nH2_exp)
-    for i in range(num_Tk_exp)
-    )
+for mole in molesp:
+    print(f'Writing .inp files for {mole} ...')
+    Parallel(n_jobs=num_cores)(
+        delayed(writeInputs)(mole, Tk ,nH2, Nco)
+        for Nco in model_grid["Column Density"]["AeB"]
+        for nH2 in model_grid["Number Density"]["AeB"]
+        for Tk in model_grid["Kinetic Temperature"]["AeB"]
+        )
 input_time = time.time()
 print(f'It took {(input_time - start_time):.2f} seconds to write all .inp files.')
 
-# ------------------------- Run RADEX for molecules 0,1,2 ------------------------------ #
-print('Start RADEXing ...')
-Parallel(n_jobs=num_cores)(
-    delayed(runRADEX_m0)(i,j,k)
-    for k in range(num_Nco_exp)
-    for j in range(num_nH2_exp)
-    for i in range(num_Tk_exp)
-    )  
-Parallel(n_jobs=num_cores)(
-    delayed(runRADEX_m1)(i,j,k)
-    for k in range(num_Nco_exp)
-    for j in range(num_nH2_exp)
-    for i in range(num_Tk_exp)
-    )          
-Parallel(n_jobs=num_cores)(
-    delayed(runRADEX_m2)(i,j,k,m,n)
-    for k in range(num_Nco_exp)
-    for j in range(num_nH2_exp)
-    for i in range(num_Tk_exp)
-    )
+# ---------------------------- runRADEX(): ---------------------------- #
+def runRADEX(mole, Tk ,nH2, Nco):
+    inpPath = f'{radexioPath}/input_{mole}/{Tk}_{nH2}_{Nco}.inp' # 因為 radexioPath 就是絕對路徑,
+                                                                 # 所以可以直接用字串傳入
+    # 為每個計算開闢獨立的臨時資料夾，避免 radex.log 互相衝突
+    with tempfile.TemporaryDirectory() as temp_dir: # with 語法 (Context Manager): 是沙盒
+        with open(inpPath, 'r') as inpFile: # 用 with open() 的方法讀取路徑為 inpPath 的檔案, 稱之為 inpFile
+            subprocess.run( # subprocess: 聽說是 Python 官方推薦用來取代 os.system 的子進程管理工具
+                            # 我覺得這是有說法的喔, 因為寫 os.system() 的時候, system 會被劃線劃掉, 聽説這代表函式過期
+                ['radex'],  # 就是指令
+                stdin=inpFile, # 相當於 Shell 的 < input.inp 重定向
+                               # 喔我以為 < 是 radex 自己發明的椰
+                               # stdin: 標準輸入串流, 聽說不需要經過 Shell 解析，執行效率比 os.system 更高且更安全
+                cwd=temp_dir,               # cwd: current woking directory
+                stdout=subprocess.DEVNULL,  # 終端資訊丟進 /dev/null
+                stderr=subprocess.DEVNULL,
+            )
+
+for mole in molesp:
+    print(f'Start RADEXing for {mole} ...')
+    Parallel(n_jobs=num_cores)(
+        delayed(runRADEX)(mole, Tk ,nH2, Nco)
+        for Nco in model_grid["Column Density"]["AeB"]
+        for nH2 in model_grid["Number Density"]["AeB"]
+        for Tk in model_grid["Kinetic Temperature"]["AeB"]
+        )
 radex_time = time.time()
 print(f'It took {(radex_time - input_time):.2f} seconds to finish running RADEX.')
 
 
 ### ----------------------------- Save Models into .npy Files ------------------------------- ###
-# --------------------------- def radex_flux(): **from bayes repo** ---------------------------- #
-def radex_flux(i,j,k,m,n):
-    powj = j//cycle_dens + int(nH2[0])
-    Tk = str(round(diff_Tk*i + int(Tkin[0]), round_temp))
-    n_h2 = str(powj)
-    N_co = str(k//cycle_dens + int(Nco[0]))
-    
-    prej_r = str(round(co_dex[j%cycle_dens], round_dens))   
-    x13co = str(X_13co[m])
-    xc18o = str(X_c18o[n])
-    codex = str(round(co_dex[k%cycle_dens], round_dens))
+'''
+哇這邊最有可能抽風了
+'''
+'''
+aa = np.loadtxt(outFile, skiprows=10, max_rows=1, dtype='str')
+print(aa)
+>> ['Calculation' 'finished' 'in' '30' 'iterations'
 
-    outfile_0 = f'{radexioPath}/output_{mole0}/{Tk}_{prej_r}e{n_h2}_{codex}e{N_co}.out'
-    outfile_1 = f'{radexioPath}/output_{mole1}/{Tk}_{prej_r}e{n_h2}_{codex}e{N_co}_{x13co}.out'
-    outfile_2 = f'{radexioPath}/output_{mole2}/{Tk}_{prej_r}e{n_h2}_{codex}e{N_co}_{x13co}_{xc18o}.out'
+喔所以 skiprow 不是從 0 開始, 
+總之 .out 裡面寫說計算在多少次迭代中完成的是第11列,
+然後根據前人的經驗, 
+如果計算沒有收斂的話, 會在迭代次數, 也就是第11列的第4個字串(idx=3), 那顯示 fortran 的溢位符號
+也就是 "****"
 
-    # Extract reliable flux predictions (avoid those with convergence issues)
-    if np.loadtxt(outfile_0, skiprows=10, max_rows=1, dtype='str')[3] == '****':
-        flux_0 = np.full((3,), np.nan)
-    else:
-        flux_0 = np.genfromtxt(outfile_0, skip_header=13)[:,11]
+關於 np.loadtext():
+skiprow=10: 跳過10列, 從第11列開始讀, 反正不知道的就 print 出來看看
+max_rows=1: 最多只讀一列, 讀一列就停下來, 不會浪費時間
+dtype='str': 將讀進來的資料以空白切割成字串陣列
 
-    if np.loadtxt(outfile_1, skiprows=10, max_rows=1, dtype='str')[3] == '****':
-        flux_1 = np.full((3,), np.nan)
-    else:    
-        flux_1 = np.genfromtxt(outfile_1, skip_header=13)[:,11]
+///
 
-    if np.loadtxt(outfile_2, skiprows=10, max_rows=1, dtype='str')[3] == '****':
-        flux_2 = np.full((3,), np.nan)
-    else:    
-        flux_2 = np.genfromtxt(outfile_2, skip_header=13)[:,11]
-    
-    return k, i, j, m, n, flux_0, flux_1, flux_2
+print(np.genfromtxt(outFile, skip_header=13))
+>> 
+[[ 1.0000000e+00            nan  0.0000000e+00  5.5000000e+00
+   1.1527120e+02  2.6007576e+03 -5.1301000e+01 -1.1610000e-01
+   6.7660000e+00  7.1940000e-02  2.1530000e-02  2.1610000e+03
+   4.2620000e-05]
+ [ 2.0000000e+00            nan  1.0000000e+00  1.6600000e+01
+   2.3053800e+02  1.3004037e+03 -1.2362500e+02 -2.1250000e-01
+   3.0650000e+01  1.3110000e-01  7.1940000e-02  9.7880000e+03
+   1.5440000e-03]
+ [ 3.0000000e+00            nan  2.0000000e+00  3.3200000e+01
+   3.4579600e+02  8.6696340e+02  2.5866600e+02  2.3130000e-01
+   5.1700000e+01  1.7220000e-01  1.3110000e-01  1.6510000e+04
+   8.7930000e-03]]
 
+這邊用 genfromtxt 好像是因為有一些nan 還是什麼的
+總之我記得他和 np.loadtxt() 的區別是這個比較寬鬆, 可以處理缺失值什麼的
+印出來之後稍微對照一下, 發現每個第二層串列中的前三個是躍遷資訊
+接下來的資訊是什麼就是對照著 .out 看就對了
+發現第 11 個元素就是 flux (K km s-1) :D
+關於 np.genfromtxt(): 
+skip_header=13: 跳過 13 列 >> 到達那個有寫躍遷和一堆計算結果的那邊
+反正就是開一個 .out 出來看看就對了
+'''
 # --------------------------------------- Run radex_flux(): ------------------------------------ #
-print('Constructing flux model grids...')
-results = Parallel(n_jobs=num_cores, verbose=5)(
-    delayed(radex_flux)(i,j,k,m,n)
-    for n in range(0, num_X13to18)
-    for m in range(0, num_X12to13)
-    for k in range(num_Nco)
-    for j in range(num_nH2)
-    for i in range(num_Tk)
-    )
+def radex_flux(mole, Tk, nH2, Nco):
+    physet = f'{Tk}_{nH2}_{Nco}'
+    outFile = f'{radexioPath}/output_{mole}/{physet}.out'
+    # Extract reliable flux predictions (avoid those with convergence issues)
+    if np.loadtxt(outFile, skiprows=10, max_rows=1, dtype='str')[3] == '****':
+        flux = np.full(len(transis), np.nan)
+        print(f'{outFile} has converage issue :(') # 這邊像要做一個寫入啊哈, 但不是必要的
+    else:
+        flux = np.genfromtxt(outFile, skip_header=13)[:, 11]
+    return flux
+    
+    #return k, i, j, m, n, flux (???)
 
-# -------------------------------- Containers for File Saving ----------------------------------- #
-transis = ['10', '21', '32'] # (i think) model grids should cover everything
+
+'''
+現在的困難比較偏向於世
+我應該用什麼樣的資料結構去儲存老子的 flux
+讀取一個檔案, 然後取出總共4個transision的flux
+
+用字典嗎? 第一層先是 molecule sp,
+第二層是是一大堆的鍵值, key is physet and value is flux array (4 member)
+但不知道就是說痾這樣的東西還可以放平行處理嗎
+key 也是儲存資料的一部分啊哈
+而且用字典在存東西的話, 感覺運算速度會很慢
+靠北之後還要從字典讀出來嗎
+還是做成內外混合串列
+但不行, 因為npy計算要快的話好像是要純數字的
+
+但總之,radex flux model 的前半部分應該要先下去跑啊哈
+'''
+#print('Constructing flux model grids...')
+#here i a paralle
+
+"""
+# ----------------------------- Containers for File Saving -------------------------------- #
+
 mole_info = [  # molespiece, (initial flux array's shape)
     ('co',   (num_Nco, num_Tk, num_nH2)),
     ('13co', (num_Nco, num_Tk, num_nH2, num_X12to13)),
