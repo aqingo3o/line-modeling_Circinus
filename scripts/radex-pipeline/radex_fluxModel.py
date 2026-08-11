@@ -11,30 +11,6 @@
 
 目前的版本刪掉了 Abudance ratio
 因為不知道可拿這些做蛇麼, 少點參數我還可以算 reduce chi2
-----------------------------------------------------------------------------------
-然後這支程式真的狗幹長, 所以提供了[目錄]
-- Import Module
-- Build Folder Structure
-- Path Variables
-
-### RADEX pipeline
-- Basic Variables
-- Physical Conditions Grid
-- Pre-processing
-- def write_inputs_m*():
-- def run_radex_m*():
-- Use Functions write_inputs_m*() for molecules0,1,2
-- Run RADEX for molecules 0,1,2 
-
-### Save Models into .npy Files
-- def radex_flux(): **from bayes repo**
-- Run radex_flux():
-- Containers for File Saving
-- Construct 3D - 5D flux models (initial shape)
-- Construct 5D Flux Models
-- Construct 6D Flux Models
-
-### Write Time Records
 '''
 
 # -------------------------- Import Module --------------------------- #
@@ -124,7 +100,6 @@ for paraname in phy_para:
         '''
     model_grid[paraname]["AeB"] = np.array(aeb) # 驚天超爛名字
 
-"""
 # --------------------------- writeInputs(): --------------------------- #
 def writeInputs(molesp, Tk, nH2, Nco):
     file = open(f'{radexioPath}/input_{molesp}/{Tk}_{nH2}_{Nco}.inp', 'w')
@@ -180,9 +155,8 @@ for molesp in mole_species:
         )
 radex_time = time.time()
 print(f'It took {(radex_time - input_time):.2f} seconds to finish running RADEX.')
-"""
 
-### ----------------------------- Save Models into .npy Files ------------------------------- ###
+### ------------------ Save Models into .npy Files -------------------- ###
 '''
 哇這邊最有可能抽風了
 '''
@@ -234,7 +208,7 @@ n 取決於填入 .inp 的頻率範圍, 應該要與這隻程式中設定的 tra
 skip_header=13: 跳過 13 列 >> 到達那個有寫躍遷和一堆計算結果的那邊
 反正就是開一個 .out 出來看看就對了
 '''
-# ----------------------------------- Get Model Fllux -------------------------------- #
+# --------------------------- Get Model Flux ---------------------------- #
 flux_model = {}
 def getMflux(molesp, Tk, nH2, Nco):
     physet = f'{Tk}_{nH2}_{Nco}'
@@ -260,102 +234,51 @@ for molesp in mole_species:
     所以我猜接下來不做平行處理也行?
     '''
     for t_idx in range(len(transis)):
-        phyArray, mfluxArray = [], []
-
-        for physet, mflux in resultset:
-            phyArray_sub = []
-            for phy in physet.split('_'):
-                phyArray_sub.append(float(phy)) # follow the order: Tk, nH2, Nco
-
-            phyArray.append(phyArray_sub) # 這樣才會三個三個包在一起
+        mfluxArray = []
+        for _, mflux in resultset:
             mfluxArray.append(mflux[t_idx])
 
         flux_model[f'{molesp}-{transis[t_idx]}'] = {
-            "Physical Condi": np.array(phyArray),
             "Flux Model": np.array(mfluxArray),
         }
-
-print(flux_model["co-10"])
-
-"""
-# ----------------------------- Containers for File Saving -------------------------------- #
-
-mole_info = [  # molespiece, (initial flux array's shape)
-    ('co',   (num_Nco, num_Tk, num_nH2)),
-    ('13co', (num_Nco, num_Tk, num_nH2, num_X12to13)),
-    ('c18o', (num_Nco, num_Tk, num_nH2, num_X12to13, num_X13to18)),
-]
-flux_model = {}
-
-# ---------------------- Construct 3D - 5D flux models (initial shape) ---------------------------- #
-for molesp, iniShape in mole_info: # Initialize flux array
-    for t in transis:
-        flux_model[f'{molesp}-{t}'] = {"flux": np.full(iniShape, np.nan)}
-
-for result in results: # Get FluxxxxxX, by Function radex_flux()
-    k, i, j, m, n, flux_co, flux_13co, flux_c18o = result
-    
-    flux_data = [flux_co, flux_13co, flux_c18o]
-    mole_spiece = ['co', '13co', 'c18o'] # 這兩的 index 要對齊
-
-    for m_idx, molesp in enumerate(mole_spiece):
-        for t_idx, t in enumerate(transis):
-            if molesp == 'co':
-                flux_model[f'{molesp}-{t}']["flux"][k,i,j] = flux_data[m_idx][t_idx]
-            elif molesp == '13co':
-                flux_model[f'{molesp}-{t}']["flux"][k,i,j,m] = flux_data[m_idx][t_idx]
-            elif molesp == 'c18o':
-                flux_model[f'{molesp}-{t}']["flux"][k,i,j,m,n] = flux_data[m_idx][t_idx]
 '''
-保留這個東西 因為這個太他媽懸吊了
-for result in results:
-    k, i, j, m, n, flux_0, flux_1, flux_2 = result
-    flux_co10[k,i,j] = flux_0[0]
-    flux_co21[k,i,j] = flux_0[1]
-    flux_co32[k,i,j] = flux_0[2]
-    flux_13co10[k,i,j,m] = flux_1[0]
-    flux_13co21[k,i,j,m] = flux_1[1]
-    flux_13co32[k,i,j,m] = flux_1[2]
-    flux_c18o10[k,i,j,m] =   flux_2[0] # 雞雞為什麼這個少一個
-    flux_c18o21[k,i,j,m,n] = flux_2[1]
-    flux_c18o32[k,i,j,m,n] = flux_2[2]
+因為大家的 physet 都一樣(的樣子), 所以可以共用最後一個作為代表
 '''
+# Get physical Conditions into array
+phyArray = [] 
+for physet, _ in resultset: 
+    phyArray_sub = []
+    for phy in physet.split('_'):
+        phyArray_sub.append(float(phy)) # follow the order: Tk, nH2, Nco
+    phyArray.append(phyArray_sub) # 這樣才會三個三個包在一起
+np.save(f'{npyPath}/phy_model_Tk-nH2-Nco.npy', np.array(phyArray))
 
-for molename in flux_model.keys(): # Save "flux" into .npy
-    np.save(f'{npyPath}/flux_nd-coarse2_{molename}.npy', flux_model[molename]["flux"]) # (filename) modi by qing (20260317)
-fluxini_time = time.time()
-print('Flux models saved.')
+# Save ["Flux Model"] into .npy
+for molename in flux_model.keys(): 
+    np.save(f'{npyPath}/flux_{len(phy_para)}d_{molename}.npy', flux_model[molename]["Flux Model"])
+inimodel_time = time.time()
+print('Flux models and physical condition array are saved.')
 
-ratio5d_time = time.time()
-
-# ---------------------------------- Construct 6D Flux Models --------------------------------- #
-'''
-以下的部分不是 radex_pipeline.py 了
-來自 flux_model_6d.py, Eltha
-不知道為什麼 Eltha 女士要分開寫, 但是合在一起同樣能避免要再設一次一桶變數的問題
-'''
-beam_fill = 10 ** np.arange(-1.3, 0.1, 0.1)
+# --------------------- Add Beam Filling Factor to Model --------------------- #
+beam_fill = 10 ** np.arange(-1.3, 0.1, step=0.1)
 beamFactor = beam_fill.reshape(1,1,1,1,1, beam_fill.shape[0]) # factor 是亂叫的
 
-# Construct 6d-flux models from 5d by adding the beam filling factor dimension
-for molesp, _ in mole_info:
-    for t in transis:
-        theFlux_5d = flux_model[f'{molesp}-{t}']["flux_5d"]
-        theFlux_6d = theFlux_5d.reshape(num_Nco,num_Tk,num_nH2,num_X12to13,num_X13to18,1) * beamFactor
-        flux_model[f'{molesp}-{t}']["flux_6d"] = theFlux_6d
+
+# 欸幹不對這應該用 dimension 比較好啊 啊
+for molename in flux_model.keys:
+        flux_model[f'{molename}']["Flux with bf"] = flux_model[f'{molename}']["Flux Model"] * beamFactor
 
 for molename in flux_model.keys(): # Save "flux_6d" into .npy
     np.save(f'{npyPath}/flux_{d_with_bf}_{molename}.npy', flux_model[molename]["flux_6d"])
 print('Flux_6d models saved.')
-flux6d_time = time.time()
+bfmodel_time = time.time()
 
-### ------------------------------- Write Time Records ------------------------------------ ###
+### --------------------------- Write Time Records ------------------------ ###
 timerec = open(f'{projectRoot}/docs/radex-pipeline_timeRecord_iset.txt', 'w') # made by qing (20260113)
 timerec.write(f'It took {(input_time - start_time):.2f} seconds to write all .inp files.\n')
 timerec.write(f'It took {(radex_time - input_time):.2f} seconds to finish running RADEX.\n')
-timerec.write(f'It took {(fluxini_time - radex_time):.2f} seconds to save 3d, 4d, 5d flux models.\n')
-timerec.write(f'It took {(ratio5d_time - fluxini_time):.2f} seconds to save 5d ratio models.\n')
-timerec.write(f'It took {(flux6d_time - ratio5d_time):.2f} seconds to save 6d flux models.\n')
+timerec.write(f'It took {(inimodel_time - radex_time):.2f} seconds to save flux and physical models.\n')
+#timerec.write(f'It took {(bfmodel_time - inimodel_time):.2f} seconds to save models with beam filling factor.\n')
 timerec.close()
-"""
+
 print('Sincere congratulations! This script arrived here without any obstacles. <3')
