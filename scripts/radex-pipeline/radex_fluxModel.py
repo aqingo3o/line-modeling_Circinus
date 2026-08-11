@@ -87,9 +87,9 @@ start_time = time.time()
 num_cores = 20 # joblib
 linewidth = 300 # km/s
 phy_para = ['Kinetic Temperature', 'Number Density', 'Column Density'] # keys of model_grid
-molesp = ['co', 
-          #'13co', 'c18o'
-          ]
+mole_species = ['co', 
+                #'13co', 'c18o'
+                ]
 transis = ['10', '21', '32', '43'] # (i think) model grids should cover everything
 
 # ----------------- Set Physical Conditions Range ------------------- #
@@ -124,11 +124,12 @@ for paraname in phy_para:
         '''
     model_grid[paraname]["AeB"] = np.array(aeb) # 驚天超爛名字
 
+"""
 # --------------------------- writeInputs(): --------------------------- #
-def writeInputs(mole, Tk, nH2, Nco):
-    file = open(f'{radexioPath}/input_{mole}/{Tk}_{nH2}_{Nco}.inp', 'w')
-    file.write(f'{mole}.dat\n')
-    file.write(f'{radexioPath}/output_{mole}/{Tk}_{nH2}_{Nco}.out\n')
+def writeInputs(molesp, Tk, nH2, Nco):
+    file = open(f'{radexioPath}/input_{molesp}/{Tk}_{nH2}_{Nco}.inp', 'w')
+    file.write(f'{molesp}.dat\n')
+    file.write(f'{radexioPath}/output_{molesp}/{Tk}_{nH2}_{Nco}.out\n')
     file.write('100 500\n')
     file.write(f'{Tk}\n')
     file.write('1\n')
@@ -140,10 +141,10 @@ def writeInputs(mole, Tk, nH2, Nco):
     file.write('0\n')
     file.close()
 
-for mole in molesp:
-    print(f'Writing .inp files for {mole} ...')
+for molesp in mole_species:
+    print(f'Writing .inp files for {molesp} ...')
     Parallel(n_jobs=num_cores)(
-        delayed(writeInputs)(mole, Tk ,nH2, Nco)
+        delayed(writeInputs)(molesp, Tk ,nH2, Nco)
         for Nco in model_grid["Column Density"]["AeB"]
         for nH2 in model_grid["Number Density"]["AeB"]
         for Tk in model_grid["Kinetic Temperature"]["AeB"]
@@ -152,8 +153,8 @@ input_time = time.time()
 print(f'It took {(input_time - start_time):.2f} seconds to write all .inp files.')
 
 # ---------------------------- runRADEX(): ---------------------------- #
-def runRADEX(mole, Tk ,nH2, Nco):
-    inpPath = f'{radexioPath}/input_{mole}/{Tk}_{nH2}_{Nco}.inp' # 因為 radexioPath 就是絕對路徑,
+def runRADEX(molesp, Tk ,nH2, Nco):
+    inpPath = f'{radexioPath}/input_{molesp}/{Tk}_{nH2}_{Nco}.inp' # 因為 radexioPath 就是絕對路徑,
                                                                  # 所以可以直接用字串傳入
     # 為每個計算開闢獨立的臨時資料夾，避免 radex.log 互相衝突
     with tempfile.TemporaryDirectory() as temp_dir: # with 語法 (Context Manager): 是沙盒
@@ -169,17 +170,17 @@ def runRADEX(mole, Tk ,nH2, Nco):
                 stderr=subprocess.DEVNULL,
             )
 
-for mole in molesp:
-    print(f'Start RADEXing for {mole} ...')
+for molesp in mole_species:
+    print(f'Start RADEXing for {molesp} ...')
     Parallel(n_jobs=num_cores)(
-        delayed(runRADEX)(mole, Tk ,nH2, Nco)
+        delayed(runRADEX)(molesp, Tk ,nH2, Nco)
         for Nco in model_grid["Column Density"]["AeB"]
         for nH2 in model_grid["Number Density"]["AeB"]
         for Tk in model_grid["Kinetic Temperature"]["AeB"]
         )
 radex_time = time.time()
 print(f'It took {(radex_time - input_time):.2f} seconds to finish running RADEX.')
-
+"""
 
 ### ----------------------------- Save Models into .npy Files ------------------------------- ###
 '''
@@ -223,43 +224,58 @@ print(np.genfromtxt(outFile, skip_header=13))
 印出來之後稍微對照一下, 發現每個第二層串列中的前三個是躍遷資訊
 接下來的資訊是什麼就是對照著 .out 看就對了
 發現第 11 個元素就是 flux (K km s-1) :D
+所以這樣取出的串列就會是長度為 n 個 transision 的陣列, 
+n 取決於填入 .inp 的頻率範圍, 應該要與這隻程式中設定的 transis 一樣多
+(這邊因為都是 CO 系列的, 所以可以套用同樣的範圍, 
+別的品種可能要注意一下, 
+總之就是讓所有的物種都剛好算出**同樣數量**的 transisioins)
+
 關於 np.genfromtxt(): 
 skip_header=13: 跳過 13 列 >> 到達那個有寫躍遷和一堆計算結果的那邊
 反正就是開一個 .out 出來看看就對了
 '''
-# --------------------------------------- Run radex_flux(): ------------------------------------ #
-def radex_flux(mole, Tk, nH2, Nco):
+# ----------------------------------- Get Model Fllux -------------------------------- #
+flux_model = {}
+def getMflux(molesp, Tk, nH2, Nco):
     physet = f'{Tk}_{nH2}_{Nco}'
-    outFile = f'{radexioPath}/output_{mole}/{physet}.out'
+    outFile = f'{radexioPath}/output_{molesp}/{physet}.out'
     # Extract reliable flux predictions (avoid those with convergence issues)
     if np.loadtxt(outFile, skiprows=10, max_rows=1, dtype='str')[3] == '****':
-        flux = np.full(len(transis), np.nan)
+        mflux = np.full(len(transis), np.nan)
         print(f'{outFile} has converage issue :(') # 這邊像要做一個寫入啊哈, 但不是必要的
     else:
-        flux = np.genfromtxt(outFile, skip_header=13)[:, 11]
-    return flux
-    
-    #return k, i, j, m, n, flux (???)
+        mflux = np.genfromtxt(outFile, skip_header=13)[:, 11]
+    return physet, mflux
 
+for molesp in mole_species:
+    print(f"Extracting model flux from {molesp}'s output files...")
+    resultset = Parallel(n_jobs=num_cores)( # 這邊要用東西裝 return, resultset -> [physet, ]
+                    delayed(getMflux)(molesp, Tk ,nH2, Nco)
+                    for Nco in model_grid["Column Density"]["AeB"]
+                    for nH2 in model_grid["Number Density"]["AeB"]
+                    for Tk in model_grid["Kinetic Temperature"]["AeB"]
+                    )
+    '''
+    到這邊, 就讀完一坨檔案了, 集成一個大 list
+    所以我猜接下來不做平行處理也行?
+    '''
+    for t_idx in range(len(transis)):
+        phyArray, mfluxArray = [], []
 
-'''
-現在的困難比較偏向於世
-我應該用什麼樣的資料結構去儲存老子的 flux
-讀取一個檔案, 然後取出總共4個transision的flux
+        for physet, mflux in resultset:
+            phyArray_sub = []
+            for phy in physet.split('_'):
+                phyArray_sub.append(float(phy)) # follow the order: Tk, nH2, Nco
 
-用字典嗎? 第一層先是 molecule sp,
-第二層是是一大堆的鍵值, key is physet and value is flux array (4 member)
-但不知道就是說痾這樣的東西還可以放平行處理嗎
-key 也是儲存資料的一部分啊哈
-而且用字典在存東西的話, 感覺運算速度會很慢
-靠北之後還要從字典讀出來嗎
-還是做成內外混合串列
-但不行, 因為npy計算要快的話好像是要純數字的
+            phyArray.append(phyArray_sub) # 這樣才會三個三個包在一起
+            mfluxArray.append(mflux[t_idx])
 
-但總之,radex flux model 的前半部分應該要先下去跑啊哈
-'''
-#print('Constructing flux model grids...')
-#here i a paralle
+        flux_model[f'{molesp}-{transis[t_idx]}'] = {
+            "Physical Condi": np.array(phyArray),
+            "Flux Model": np.array(mfluxArray),
+        }
+
+print(flux_model["co-10"])
 
 """
 # ----------------------------- Containers for File Saving -------------------------------- #
@@ -309,22 +325,6 @@ for molename in flux_model.keys(): # Save "flux" into .npy
     np.save(f'{npyPath}/flux_nd-coarse2_{molename}.npy', flux_model[molename]["flux"]) # (filename) modi by qing (20260317)
 fluxini_time = time.time()
 print('Flux models saved.')
-
-# ---------------------------------- Construct 5D Flux Models ---------------------------------- #
-for molesp, _ in mole_info: # reshape the initial flux model to 5d
-    for t in transis:
-        theFlux = flux_model[f'{molesp}-{t}']["flux"]
-        if molesp == 'co':
-            cache = np.repeat(theFlux[:,:,:, np.newaxis], num_X12to13, axis=3) # used to be 'temp'
-            theFlux_5d = np.repeat(cache[:,:,:,:, np.newaxis], num_X13to18, axis=4)
-        elif molesp == '13co':
-            theFlux_5d = np.repeat(theFlux[:,:,:,:, np.newaxis], num_X13to18, axis=4)
-        elif molesp == 'c18o':
-            theFlux_5d = theFlux
-        flux_model[f'{molesp}-{t}']["flux_5d"] = theFlux_5d
-
-for molename in flux_model.keys(): # Save "flux_5d" into .npy
-    np.save(f'{npyPath}/flux_{molename}.npy', flux_model[molename]["flux_5d"]) # (filename) modi by qing (20260317)
 
 ratio5d_time = time.time()
 
