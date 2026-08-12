@@ -2,6 +2,8 @@
 # Put this script under {projectRoot}, (i.e. /home/aqing/Documents/line-modleing_Circiuns/)
 # Remaining dependency paths will be created automatically.
 '''
+I think something unexcepted happend in Eltha's code
+so I write another script for RADEX model grid.
 因為一些發現, 總之要自己寫這個程式了, 不知道是大事很妙還是大事不妙
 雖然這個程式並非出現在工作的前期 (也就是我已經擁有熟成的檔案結構)
 但為了後續復現的方便 && 這隻程式高度資料夾路徑依賴
@@ -26,6 +28,7 @@ import tempfile
 import time
 
 # ---------------------- Build Folder Structure ---------------------- #
+'''
 print('Start creating folder structure for radex_fluxModel.py ...')
 projectRoot = Path(__file__).resolve().parents[0] # line-modeling_Circinus, no slash
 # First-level
@@ -50,8 +53,10 @@ for i in under_radexio:
         os.makedirs(ioPath_sub)
 print('Dependency folder strucrure is now OK :D')
 print()
+'''
 
 # -------------------------- Path Variables -------------------------- #
+projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus'
 radexioPath = f'{projectRoot}/data/radex_io' # a VAST number of files
 npyPath = f'{projectRoot}/data/model_npy'    # extracted flux model
 
@@ -64,6 +69,7 @@ mole_species = ['co', '13co', 'c18o']
 transis = ['10', '21', '32', '43'] # (i think) model grids should cover everything
 
 # ----------------- Set Physical Conditions Range ------------------- #
+# Grid steps
 expstep_Tk = 0.1
 expstep_nH2 = 0.2
 expstep_Nco = expstep_nH2 # step size for Nco and nH2 should be the same (idky)
@@ -87,6 +93,7 @@ for paraname in phy_para:
         aeb.append(f'{round(coe, 4)}e{int(fexp)}')
     model_grid[paraname]["AeB"] = np.array(aeb)
 
+'''
 # ------------------------- writeInputs(): ------------------------- #
 def writeInputs(molesp, Tk, nH2, Nco):
     file = open(f'{radexioPath}/input_{molesp}/{Tk}_{nH2}_{Nco}.inp', 'w')
@@ -140,7 +147,7 @@ for molesp in mole_species:
 radex_time = time.time()
 print(f'It took {(radex_time - input_time):.2f} seconds to finish running RADEX.')
 print()
-
+'''
 # ------------------------- Get Model Flux ------------------------- #
 flux_model = {}
 def getMflux(molesp, Tk, nH2, Nco):
@@ -178,20 +185,30 @@ for physet, _ in resultset:
     for phy in physet.split('_'):
         phyArray_sub.append(float(phy)) # follow the order: Tk, nH2, Nco
     phyArray.append(phyArray_sub)
-np.save(f'{npyPath}/phy_plain-model_Tk-nH2-Nco.npy', np.array(phyArray))
+np.save(f'{npyPath}/phy_plain-model_Tk-nH2-Nco.npy', np.array(phyArray)) # Save phyCondi array as .npy
+print('Physical condition array is saved.')
+print()
 
-# Save ["Flux Model"] as .npy
+# ---------------- Add Beam Filling Factor to Model ---------------- #
+Phib = 10 ** np.arange(-1.3, 0.1, step=0.1)
+np.save(f'{npyPath}/phy_plain-model_Phibf.npy', np.array(Phib)) # Save Phib array as .npy
+
 for molename in flux_model.keys():
-    np.save(f'{npyPath}/flux_plain-model_{len(phy_para)}para_{molename}.npy',
-            flux_model[molename]["Flux Model"])
-inimodel_time = time.time()
-print('Flux models and physical condition array are saved.')
+    scaledflux = np.outer(flux_model[molename]["Flux Model"], Phib) # scalar product!
+    np.save(f'{npyPath}/flux_plain-model_{len(phy_para)+1}para_{molename}.npy',
+            scaledflux) # scaledflux.shape -> (12012, 14), not that plain, actually
+
+model_time = time.time()
+print('Scaled flux models are saved.')
+print()
 
 # ----------------------- Write Time Records ----------------------- #
+'''
 timerec = open(f'{projectRoot}/docs/radex-pipeline_timeRecord.txt', 'w')
 timerec.write(f'It took {(input_time - start_time):.2f} seconds to write all .inp files.\n')
 timerec.write(f'It took {(radex_time - input_time):.2f} seconds to finish running RADEX.\n')
-timerec.write(f'It took {(inimodel_time - radex_time):.2f} seconds to save flux and physical models.\n')
+timerec.write(f'It took {(model_time - radex_time):.2f} seconds to add beam filling factor.\n')
 timerec.close()
 print()
+'''
 print('Sincere congratulations! This script arrived here without any obstacles. <3')
