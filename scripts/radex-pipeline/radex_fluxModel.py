@@ -29,21 +29,21 @@ import time
 print('Start creating folder structure for radex_fluxModel.py ...')
 projectRoot = Path(__file__).resolve().parents[0] # line-modeling_Circinus, no slash
 # First-level
-projectRoot_member = ['data', 'docs', 'exp', 'products', 'scripts'] 
+projectRoot_member = ['data', 'docs', 'exp', 'products', 'scripts']
 for i in projectRoot_member:
     projectRoot_sub = f'{projectRoot}/{i}'
     if not os.path.exists(projectRoot_sub):
         os.makedirs(projectRoot_sub)
 # Second-level
 print('Strat building second & third-level subfolders under projectRoot...')
-under_data = ['radex_io', 'model_npy'] 
+under_data = ['radex_io', 'model_npy']
 for i in under_data:
     dataPath_sub = f'{projectRoot}/data/{i}'
     if not os.path.exists(dataPath_sub):
         os.makedirs(dataPath_sub)
 # Third-level
-under_radexio = ['input_co',  'input_13co',  'input_c18o', 
-                 'output_co', 'output_13co', 'output_c18o'] 
+under_radexio = ['input_co',  'input_13co',  'input_c18o',
+                 'output_co', 'output_13co', 'output_c18o']
 for i in under_radexio:
     ioPath_sub = f'{projectRoot}/data/radex_io/{i}' # radex_io/ is a hard-coding
     if not os.path.exists(ioPath_sub):
@@ -52,14 +52,12 @@ print('Dependency folder strucrure is now OK :D')
 print()
 
 # -------------------------- Path Variables -------------------------- #
-projectRoot = '/home/aqing/Documents/line-modeling_Circinus' # blackhole
-projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus' # feifei
 radexioPath = f'{projectRoot}/data/radex_io' # a VAST number of files
 npyPath = f'{projectRoot}/data/model_npy'    # extracted flux model
 
 start_time = time.time()
 # ------------------------- Basic Variables ------------------------- #
-num_cores = 20 # joblib
+num_cores = 20  # joblib
 linewidth = 300 # km/s
 phy_para = ['Kinetic Temperature', 'Number Density', 'Column Density'] # keys of model_grid
 mole_species = ['co', '13co', 'c18o']
@@ -69,11 +67,7 @@ transis = ['10', '21', '32', '43'] # (i think) model grids should cover everythi
 expstep_Tk = 0.1
 expstep_nH2 = 0.2
 expstep_Nco = expstep_nH2 # step size for Nco and nH2 should be the same (idky)
-'''
-stepex_*: 指數部分的 step
-i.e. Tkin -> 10^1, 10^1.1, 10^1.2, ... 10^2.7
-'''
-model_grid = { 
+model_grid = {
     "Kinetic Temperature": {
         "fracExp": np.arange(0.7, 2.9,  step=expstep_Tk),  # fracExp 代表在指數部分含有小數
     },
@@ -119,6 +113,7 @@ for molesp in mole_species:
         )
 input_time = time.time()
 print(f'It took {(input_time - start_time):.2f} seconds to write all .inp files.')
+print()
 
 # --------------------------- runRADEX(): -------------------------- #
 def runRADEX(molesp, Tk ,nH2, Nco):
@@ -128,7 +123,7 @@ def runRADEX(molesp, Tk ,nH2, Nco):
         with open(inpPath, 'r') as inpFile:
             subprocess.run(
                 ['radex'],     # the command
-                stdin=inpFile, # equal to "< input.inp" of Shell  
+                stdin=inpFile, # equal to "< input.inp" of Shell
                 cwd=temp_dir,
                 stdout=subprocess.DEVNULL, # Silence terminal message I/O
                 stderr=subprocess.DEVNULL,
@@ -144,6 +139,7 @@ for molesp in mole_species:
         )
 radex_time = time.time()
 print(f'It took {(radex_time - input_time):.2f} seconds to finish running RADEX.')
+print()
 
 # ------------------------- Get Model Flux ------------------------- #
 flux_model = {}
@@ -176,8 +172,8 @@ for molesp in mole_species:
         }
 
 # Turn physical conditions value into array and save as .npy
-phyArray = [] 
-for physet, _ in resultset: 
+phyArray = []
+for physet, _ in resultset:
     phyArray_sub = []
     for phy in physet.split('_'):
         phyArray_sub.append(float(phy)) # follow the order: Tk, nH2, Nco
@@ -185,17 +181,17 @@ for physet, _ in resultset:
 np.save(f'{npyPath}/phy_plain-model_Tk-nH2-Nco.npy', np.array(phyArray))
 
 # Save ["Flux Model"] as .npy
-for molename in flux_model.keys(): 
+for molename in flux_model.keys():
     np.save(f'{npyPath}/flux_plain-model_{len(phy_para)}para_{molename}.npy',
             flux_model[molename]["Flux Model"])
 inimodel_time = time.time()
 print('Flux models and physical condition array are saved.')
 
 # ----------------------- Write Time Records ----------------------- #
-timerec = open(f'{projectRoot}/docs/radex-pipeline_timeRecord_iset.txt', 'w')
+timerec = open(f'{projectRoot}/docs/radex-pipeline_timeRecord.txt', 'w')
 timerec.write(f'It took {(input_time - start_time):.2f} seconds to write all .inp files.\n')
 timerec.write(f'It took {(radex_time - input_time):.2f} seconds to finish running RADEX.\n')
 timerec.write(f'It took {(inimodel_time - radex_time):.2f} seconds to save flux and physical models.\n')
 timerec.close()
-
+print()
 print('Sincere congratulations! This script arrived here without any obstacles. <3')
