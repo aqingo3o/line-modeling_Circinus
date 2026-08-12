@@ -7,10 +7,13 @@
 但為了後續復現的方便 && 這隻程式高度資料夾路徑依賴
 為了防止程式開始跑了才發現很多東西不存在, 我保留了自動建立檔案結構的部分。
 
-程式湯底來自 Eltha 女士的 radex_pipeline.py, flux_model_6d.py
+然後靠北我根本不知道這是不是對的, 幹
 
-目前的版本刪掉了 Abudance ratio
-因為不知道可拿這些做蛇麼, 少點參數我還可以算 reduce chi2
+程式湯底來自 Eltha 女士的 radex_pipeline.py
+
+Current version remove two *Abudance Ratio* as member of model grid.
+Because I'm not sure if we need abudance ratio for science purpose or not.
+Fewer fitting parameters may led to something good?
 '''
 
 # -------------------------- Import Module --------------------------- #
@@ -23,7 +26,6 @@ import tempfile
 import time
 
 # ---------------------- Build Folder Structure ---------------------- #
-'''
 print('Start creating folder structure for radex_fluxModel.py ...')
 projectRoot = Path(__file__).resolve().parents[0] # line-modeling_Circinus, no slash
 # First-level
@@ -48,24 +50,19 @@ for i in under_radexio:
         os.makedirs(ioPath_sub)
 print('Dependency folder strucrure is now OK :D')
 print()
-'''
 
 # -------------------------- Path Variables -------------------------- #
 projectRoot = '/home/aqing/Documents/line-modeling_Circinus' # blackhole
 projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus' # feifei
 radexioPath = f'{projectRoot}/data/radex_io' # a VAST number of files
 npyPath = f'{projectRoot}/data/model_npy'    # extracted flux model
-d_with_bf = '4d' # model's dimensiom with beam filling factor
 
-### ------------------------ RADEX Pipeline ------------------------ ###
 start_time = time.time()
 # ------------------------- Basic Variables ------------------------- #
 num_cores = 20 # joblib
 linewidth = 300 # km/s
 phy_para = ['Kinetic Temperature', 'Number Density', 'Column Density'] # keys of model_grid
-mole_species = ['co', 
-                #'13co', 'c18o'
-                ]
+mole_species = ['co', '13co', 'c18o']
 transis = ['10', '21', '32', '43'] # (i think) model grids should cover everything
 
 # ----------------- Set Physical Conditions Range ------------------- #
@@ -88,19 +85,15 @@ model_grid = {
     },
 }
 
-# -------------------------- Pre-processing -------------------------- #
+# ------------------------- Pre-processing ------------------------- #
 for paraname in phy_para:
     aeb = []
     for fexp in model_grid[paraname]["fracExp"]:
-        coe = 10 ** (fexp - int(fexp)) # fexp 的非整數部分會轉生成係數
-        aeb.append(f'{round(coe, 4)}e{int(fexp)}') # (10^exp非整數部分)e(fexp整數部分)
-        '''
-        我知道有類似 f-string 的方法可以更優雅地完成這件事
-        但是個人認為這個東西的可讀性比較高
-        '''
-    model_grid[paraname]["AeB"] = np.array(aeb) # 驚天超爛名字
+        coe = 10 ** (fexp - int(fexp)) # frac-part of fexp will turn into pre(coe
+        aeb.append(f'{round(coe, 4)}e{int(fexp)}')
+    model_grid[paraname]["AeB"] = np.array(aeb)
 
-# --------------------------- writeInputs(): --------------------------- #
+# ------------------------- writeInputs(): ------------------------- #
 def writeInputs(molesp, Tk, nH2, Nco):
     file = open(f'{radexioPath}/input_{molesp}/{Tk}_{nH2}_{Nco}.inp', 'w')
     file.write(f'{molesp}.dat\n')
@@ -127,21 +120,17 @@ for molesp in mole_species:
 input_time = time.time()
 print(f'It took {(input_time - start_time):.2f} seconds to write all .inp files.')
 
-# ---------------------------- runRADEX(): ---------------------------- #
+# --------------------------- runRADEX(): -------------------------- #
 def runRADEX(molesp, Tk ,nH2, Nco):
-    inpPath = f'{radexioPath}/input_{molesp}/{Tk}_{nH2}_{Nco}.inp' # 因為 radexioPath 就是絕對路徑,
-                                                                 # 所以可以直接用字串傳入
-    # 為每個計算開闢獨立的臨時資料夾，避免 radex.log 互相衝突
-    with tempfile.TemporaryDirectory() as temp_dir: # with 語法 (Context Manager): 是沙盒
-        with open(inpPath, 'r') as inpFile: # 用 with open() 的方法讀取路徑為 inpPath 的檔案, 稱之為 inpFile
-            subprocess.run( # subprocess: 聽說是 Python 官方推薦用來取代 os.system 的子進程管理工具
-                            # 我覺得這是有說法的喔, 因為寫 os.system() 的時候, system 會被劃線劃掉, 聽説這代表函式過期
-                ['radex'],  # 就是指令
-                stdin=inpFile, # 相當於 Shell 的 < input.inp 重定向
-                               # 喔我以為 < 是 radex 自己發明的椰
-                               # stdin: 標準輸入串流, 聽說不需要經過 Shell 解析，執行效率比 os.system 更高且更安全
-                cwd=temp_dir,               # cwd: current woking directory
-                stdout=subprocess.DEVNULL,  # 終端資訊丟進 /dev/null
+    inpPath = f'{radexioPath}/input_{molesp}/{Tk}_{nH2}_{Nco}.inp'
+    # create tempoary indep-folder for each caculation, avoiding "Error open radex.log"
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with open(inpPath, 'r') as inpFile:
+            subprocess.run(
+                ['radex'],     # the command
+                stdin=inpFile, # equal to "< input.inp" of Shell  
+                cwd=temp_dir,
+                stdout=subprocess.DEVNULL, # Silence terminal message I/O
                 stderr=subprocess.DEVNULL,
             )
 
@@ -156,59 +145,7 @@ for molesp in mole_species:
 radex_time = time.time()
 print(f'It took {(radex_time - input_time):.2f} seconds to finish running RADEX.')
 
-### ------------------ Save Models into .npy Files -------------------- ###
-'''
-哇這邊最有可能抽風了
-'''
-'''
-aa = np.loadtxt(outFile, skiprows=10, max_rows=1, dtype='str')
-print(aa)
->> ['Calculation' 'finished' 'in' '30' 'iterations'
-
-喔所以 skiprow 不是從 0 開始, 
-總之 .out 裡面寫說計算在多少次迭代中完成的是第11列,
-然後根據前人的經驗, 
-如果計算沒有收斂的話, 會在迭代次數, 也就是第11列的第4個字串(idx=3), 那顯示 fortran 的溢位符號
-也就是 "****"
-
-關於 np.loadtext():
-skiprow=10: 跳過10列, 從第11列開始讀, 反正不知道的就 print 出來看看
-max_rows=1: 最多只讀一列, 讀一列就停下來, 不會浪費時間
-dtype='str': 將讀進來的資料以空白切割成字串陣列
-
-///
-
-print(np.genfromtxt(outFile, skip_header=13))
->> 
-[[ 1.0000000e+00            nan  0.0000000e+00  5.5000000e+00
-   1.1527120e+02  2.6007576e+03 -5.1301000e+01 -1.1610000e-01
-   6.7660000e+00  7.1940000e-02  2.1530000e-02  2.1610000e+03
-   4.2620000e-05]
- [ 2.0000000e+00            nan  1.0000000e+00  1.6600000e+01
-   2.3053800e+02  1.3004037e+03 -1.2362500e+02 -2.1250000e-01
-   3.0650000e+01  1.3110000e-01  7.1940000e-02  9.7880000e+03
-   1.5440000e-03]
- [ 3.0000000e+00            nan  2.0000000e+00  3.3200000e+01
-   3.4579600e+02  8.6696340e+02  2.5866600e+02  2.3130000e-01
-   5.1700000e+01  1.7220000e-01  1.3110000e-01  1.6510000e+04
-   8.7930000e-03]]
-
-這邊用 genfromtxt 好像是因為有一些nan 還是什麼的
-總之我記得他和 np.loadtxt() 的區別是這個比較寬鬆, 可以處理缺失值什麼的
-印出來之後稍微對照一下, 發現每個第二層串列中的前三個是躍遷資訊
-接下來的資訊是什麼就是對照著 .out 看就對了
-發現第 11 個元素就是 flux (K km s-1) :D
-所以這樣取出的串列就會是長度為 n 個 transision 的陣列, 
-n 取決於填入 .inp 的頻率範圍, 應該要與這隻程式中設定的 transis 一樣多
-(這邊因為都是 CO 系列的, 所以可以套用同樣的範圍, 
-別的品種可能要注意一下, 
-總之就是讓所有的物種都剛好算出**同樣數量**的 transisioins)
-
-關於 np.genfromtxt(): 
-skip_header=13: 跳過 13 列 >> 到達那個有寫躍遷和一堆計算結果的那邊
-反正就是開一個 .out 出來看看就對了
-'''
-# --------------------------- Get Model Flux ---------------------------- #
+# ------------------------- Get Model Flux ------------------------- #
 flux_model = {}
 def getMflux(molesp, Tk, nH2, Nco):
     physet = f'{Tk}_{nH2}_{Nco}'
@@ -229,10 +166,6 @@ for molesp in mole_species:
                     for nH2 in model_grid["Number Density"]["AeB"]
                     for Tk in model_grid["Kinetic Temperature"]["AeB"]
                     )
-    '''
-    到這邊, 就讀完一坨檔案了, 集成一個大 list
-    所以我猜接下來不做平行處理也行?
-    '''
     for t_idx in range(len(transis)):
         mfluxArray = []
         for _, mflux in resultset:
@@ -241,44 +174,28 @@ for molesp in mole_species:
         flux_model[f'{molesp}-{transis[t_idx]}'] = {
             "Flux Model": np.array(mfluxArray),
         }
-'''
-因為大家的 physet 都一樣(的樣子), 所以可以共用最後一個作為代表
-'''
-# Get physical Conditions into array
+
+# Turn physical conditions value into array and save as .npy
 phyArray = [] 
 for physet, _ in resultset: 
     phyArray_sub = []
     for phy in physet.split('_'):
         phyArray_sub.append(float(phy)) # follow the order: Tk, nH2, Nco
-    phyArray.append(phyArray_sub) # 這樣才會三個三個包在一起
-np.save(f'{npyPath}/phy_model_Tk-nH2-Nco.npy', np.array(phyArray))
+    phyArray.append(phyArray_sub)
+np.save(f'{npyPath}/phy_plain-model_Tk-nH2-Nco.npy', np.array(phyArray))
 
-# Save ["Flux Model"] into .npy
+# Save ["Flux Model"] as .npy
 for molename in flux_model.keys(): 
-    np.save(f'{npyPath}/flux_{len(phy_para)}d_{molename}.npy', flux_model[molename]["Flux Model"])
+    np.save(f'{npyPath}/flux_plain-model_{len(phy_para)}para_{molename}.npy',
+            flux_model[molename]["Flux Model"])
 inimodel_time = time.time()
 print('Flux models and physical condition array are saved.')
 
-# --------------------- Add Beam Filling Factor to Model --------------------- #
-beam_fill = 10 ** np.arange(-1.3, 0.1, step=0.1)
-beamFactor = beam_fill.reshape(1,1,1,1,1, beam_fill.shape[0]) # factor 是亂叫的
-
-
-# 欸幹不對這應該用 dimension 比較好啊 啊
-for molename in flux_model.keys:
-        flux_model[f'{molename}']["Flux with bf"] = flux_model[f'{molename}']["Flux Model"] * beamFactor
-
-for molename in flux_model.keys(): # Save "flux_6d" into .npy
-    np.save(f'{npyPath}/flux_{d_with_bf}_{molename}.npy', flux_model[molename]["flux_6d"])
-print('Flux_6d models saved.')
-bfmodel_time = time.time()
-
-### --------------------------- Write Time Records ------------------------ ###
-timerec = open(f'{projectRoot}/docs/radex-pipeline_timeRecord_iset.txt', 'w') # made by qing (20260113)
+# ----------------------- Write Time Records ----------------------- #
+timerec = open(f'{projectRoot}/docs/radex-pipeline_timeRecord_iset.txt', 'w')
 timerec.write(f'It took {(input_time - start_time):.2f} seconds to write all .inp files.\n')
 timerec.write(f'It took {(radex_time - input_time):.2f} seconds to finish running RADEX.\n')
 timerec.write(f'It took {(inimodel_time - radex_time):.2f} seconds to save flux and physical models.\n')
-#timerec.write(f'It took {(bfmodel_time - inimodel_time):.2f} seconds to save models with beam filling factor.\n')
 timerec.close()
 
 print('Sincere congratulations! This script arrived here without any obstacles. <3')
