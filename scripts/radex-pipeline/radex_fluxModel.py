@@ -28,7 +28,7 @@ import tempfile
 import time
 
 # ---------------------- Build Folder Structure ---------------------- #
-'''
+#'''
 print('Start creating folder structure for radex_fluxModel.py ...')
 projectRoot = Path(__file__).resolve().parents[0] # line-modeling_Circinus, no slash
 # First-level
@@ -53,10 +53,10 @@ for i in under_radexio:
         os.makedirs(ioPath_sub)
 print('Dependency folder strucrure is now OK :D')
 print()
-'''
+#'''
 
 # -------------------------- Path Variables -------------------------- #
-projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus'
+#projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus'
 radexioPath = f'{projectRoot}/data/radex_io' # a VAST number of files
 npyPath = f'{projectRoot}/data/model_npy'    # extracted flux model
 
@@ -64,7 +64,11 @@ start_time = time.time()
 # ------------------------- Basic Variables ------------------------- #
 num_cores = 20  # joblib
 linewidth = 300 # km/s
-phy_para = ['Kinetic Temperature', 'Number Density', 'Column Density'] # keys of model_grid
+
+phy_para = ['Kinetic Temperature', 'Number Density', '12CO Column Density'] # part of keys of model_grid
+X1213 = 40 # Abundance ratio, Hitschfeld(2008)
+X1318 = 8  # ?
+
 mole_species = ['co', '13co', 'c18o']
 transis = ['10', '21', '32', '43'] # (i think) model grids should cover everything
 
@@ -78,24 +82,32 @@ model_grid = {
         "fracExp": np.arange(0.7, 2.9,  step=expstep_Tk),  # fracExp 代表在指數部分含有小數
     },
     "Number Density": {
-        "fracExp": np.arange(2.,  6.1,  step=expstep_nH2), # 多的那 .1 是因為 arange() 會在終點前停下
+        "fracExp": np.arange(2.,  5.1,  step=expstep_nH2), # 多的那 .1 是因為 arange() 會在終點前停下
     },
-    "Column Density": {
+    "12CO Column Density": {
         "fracExp": np.arange(15., 20.1, step=expstep_Nco),
     },
 }
 
 # ------------------------- Pre-processing ------------------------- #
+'''
+老哥這個檔名真的比較噁心了
+'''
 for paraname in phy_para:
     aeb = []
     for fexp in model_grid[paraname]["fracExp"]:
         coe = 10 ** (fexp - int(fexp)) # frac-part of fexp will turn into pre(coe
-        aeb.append(f'{round(coe, 4)}e{int(fexp)}')
+        aeb.append(float(f'{round(coe, 4)}e{int(fexp)}')) # float(string) -> number :)
     model_grid[paraname]["AeB"] = np.array(aeb)
 
-'''
+N12co_aeb = model_grid["12CO Column Density"]["AeB"]
+model_grid["13CO Column Density"] = {"AeB": N12co_aeb / X1213}
+model_grid["C18O Column Density"] = {"AeB": N12co_aeb / (X1213 * X1318)}
+
+#print(model_grid.keys())
+
 # ------------------------- writeInputs(): ------------------------- #
-def writeInputs(molesp, Tk, nH2, Nco):
+def writeInput(molesp, Tk, nH2, Nco):
     file = open(f'{radexioPath}/input_{molesp}/{Tk}_{nH2}_{Nco}.inp', 'w')
     file.write(f'{molesp}.dat\n')
     file.write(f'{radexioPath}/output_{molesp}/{Tk}_{nH2}_{Nco}.out\n')
@@ -111,10 +123,16 @@ def writeInputs(molesp, Tk, nH2, Nco):
     file.close()
 
 for molesp in mole_species:
-    print(f'Writing .inp files for {molesp} ...')
+    print(f'Writing .inp files for {molesp}...')
+    if molesp == 'co':
+        ColumnDensityGrid = model_grid["12CO Column Density"]["AeB"]
+    elif molesp == '13co':
+        ColumnDensityGrid = model_grid["13CO Column Density"]["AeB"]
+    elif molesp =='c18o':
+        ColumnDensityGrid = model_grid["C18O Column Density"]["AeB"]
     Parallel(n_jobs=num_cores)(
-        delayed(writeInputs)(molesp, Tk ,nH2, Nco)
-        for Nco in model_grid["Column Density"]["AeB"]
+        delayed(writeInput)(molesp, Tk ,nH2, Nco)
+        for Nco in ColumnDensityGrid
         for nH2 in model_grid["Number Density"]["AeB"]
         for Tk in model_grid["Kinetic Temperature"]["AeB"]
         )
@@ -138,16 +156,22 @@ def runRADEX(molesp, Tk ,nH2, Nco):
 
 for molesp in mole_species:
     print(f'Start RADEXing for {molesp} ...')
+    if molesp == 'co':
+        ColumnDensityGrid = model_grid["12CO Column Density"]["AeB"]
+    elif molesp == '13co':
+        ColumnDensityGrid = model_grid["13CO Column Density"]["AeB"]
+    elif molesp =='c18o':
+        ColumnDensityGrid = model_grid["C18O Column Density"]["AeB"]
     Parallel(n_jobs=num_cores)(
         delayed(runRADEX)(molesp, Tk ,nH2, Nco)
-        for Nco in model_grid["Column Density"]["AeB"]
+        for Nco in ColumnDensityGrid
         for nH2 in model_grid["Number Density"]["AeB"]
         for Tk in model_grid["Kinetic Temperature"]["AeB"]
         )
 radex_time = time.time()
 print(f'It took {(radex_time - input_time):.2f} seconds to finish running RADEX.')
 print()
-'''
+
 # ------------------------- Get Model Flux ------------------------- #
 flux_model = {}
 def getMflux(molesp, Tk, nH2, Nco):
@@ -163,12 +187,21 @@ def getMflux(molesp, Tk, nH2, Nco):
 
 for molesp in mole_species:
     print(f"Extracting model flux from {molesp}'s output files...")
+    if molesp == 'co':
+        ColumnDensityGrid = model_grid["12CO Column Density"]["AeB"]
+    elif molesp == '13co':
+        ColumnDensityGrid = model_grid["13CO Column Density"]["AeB"]
+    elif molesp =='c18o':
+        ColumnDensityGrid = model_grid["C18O Column Density"]["AeB"]
+
     resultset = Parallel(n_jobs=num_cores)( # 這邊要用東西裝 return, resultset -> [physet, ]
                     delayed(getMflux)(molesp, Tk ,nH2, Nco)
-                    for Nco in model_grid["Column Density"]["AeB"]
+                    for Nco in ColumnDensityGrid
                     for nH2 in model_grid["Number Density"]["AeB"]
                     for Tk in model_grid["Kinetic Temperature"]["AeB"]
                     )
+
+    # Get model flux for each tansition
     for t_idx in range(len(transis)):
         mfluxArray = []
         for _, mflux in resultset:
@@ -178,16 +211,20 @@ for molesp in mole_species:
             "Flux Model": np.array(mfluxArray),
         }
 
-# Turn physical conditions value into array and save as .npy
-phyArray = []
-for physet, _ in resultset:
-    phyArray_sub = []
-    for phy in physet.split('_'):
-        phyArray_sub.append(float(phy)) # follow the order: Tk, nH2, Nco
-    phyArray.append(phyArray_sub)
-np.save(f'{npyPath}/phy_plain-model_Tk-nH2-Nco.npy', np.array(phyArray)) # Save phyCondi array as .npy
-print('Physical condition array is saved.')
-print()
+    # Turn physical conditions value into array and save as .npy
+    phyArray = []
+    for physet, _ in resultset:
+        phyArray_sub = []
+        for phy in physet.split('_'):
+            phyArray_sub.append(float(phy)) # follow the order: Tk, nH2, Nco
+        phyArray.append(phyArray_sub)
+    np.save(f'{npyPath}/phy_plain-model_Tk-nH2-N{molesp}.npy',
+            np.array(phyArray)) # Save phyCondi array as .npy
+
+#  Save model flux as .npy
+for molename in flux_model.keys():
+    np.save(f'{npyPath}/flux_plain-model_{len(phy_para)}para_{molename}.npy',
+            flux_model[molename]["Flux Model"])
 
 # ---------------- Add Beam Filling Factor to Model ---------------- #
 Phib = 10 ** np.arange(-1.3, 0.1, step=0.1)
