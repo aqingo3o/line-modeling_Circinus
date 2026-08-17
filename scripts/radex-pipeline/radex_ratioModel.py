@@ -1,10 +1,10 @@
-# Only run this script after running radex_fluxModel.py
+# Please run this script after running radex_fluxModel.py
 # Construct 5D Ratio Models, and save them as .npy files
 '''
-程式湯底來自 Eltha 女士的 radex_pipeline.py, flux_model_6d.py, 
-flux model 的部分在 radex_fluxModel.py 中已經處理好了,
-這邊是要讀取存成 .npy 的 5d flux model, 計算出 ratio model 並也存成 .npy
-所以必須先跑過 radex_fluxModel.py 才行, 不然會找不到這邊需要的原料
+因為真沒招了, 搞不好真的是 beam-filling factor 在搞
+所以試試這個?
+
+updatae: 2026-08-17, Really use this script and do some revise...
 '''
 
 # Import Module
@@ -12,26 +12,37 @@ import numpy as np
 
 # Path Variables
 projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus' # feifei
-npyPath = f'{projectRoot}/data/model_npy'  # flux 原料的地址
+npyPath = f'{projectRoot}/data/model_npy'
 
-# Set Containers
-flux5d = {} # 放 5d flux 的字典
-ratio_model = {}
+moles_name = ['co-10', 'co-21', 'co-32', '13co-10', '13co-21', 'c18o-21',]
+# (numer, denomi)
+'''
+just these 5 line ratio for ratio model
+because (L2/L3) = ((L2/L1) / (L3/L1)) for chi2 fitting.
+'''
+ratio_set = [
+    ('co-21', 'co-10'),
+    ('co-32', 'co-10'),
 
-# Get Ratio's Material (Load 5d Flux Model (.npy))
-moles_name = ['co-10', '13co-10', 'c18o-10',
-              'co-21', '13co-21', 'c18o-21',]
+    ('13co-10', 'co-10'),
+    ('13co-21', 'co-10'),
 
+    ('c18o-21', 'co-10'),
+    ]
+
+# Load flux models
+flux_model = {}
 for molename in moles_name:
-    flux5d[molename] = np.load(f'{npyPath}/flux_5d-coarse2_{molename}.npy') # Eltha 就用的 5d
+    flux_model[molename] = np.load(f'{npyPath}/flux_plain-model_3para_{molename}.npy')
+    '''
+    load flux models without beam filling factor
+    , so '3para'
+    '''
 
 # Ratio
-'''
-這樣寫可能會有點冗員, 但總之就是先決定是這樣了
-'''
-for numer in moles_name:
-    for denomi in moles_name:
-        if numer != denomi:
-            np.save(f'{npyPath}/ratio_{numer}-over-{denomi}.npy', flux5d[numer] / flux5d[denomi])
+for ratioset in ratio_set:
+    line_ratio = flux_model[ratioset[0]] / flux_model[ratioset[1]]
+    np.save(f'{npyPath}/ratio_plain-model_{ratioset[0]}-over-{ratioset[0]}.npy',
+            line_ratio)
 
-print('Ratio models saved.')
+print('Ratio models are saved.')
