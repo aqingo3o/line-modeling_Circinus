@@ -1,55 +1,60 @@
-# Run this script on feifei, due to the file structure.
+# Script for feifei because i need mpl.
 # can be put in any sub-folder, but I recommand scripts/
 '''
-當然是從 Eltha 那邊抄的, 適應了 feifei 的檔案環境, 
-import 的 flux model 來自 scripts/radex_fluxModel.py
+Flux models imported in this script are from scripts/radex_fluxModel.py
+Fit one pixel and see if any big mistake occur.
 
-fullComment 版含有 contuors plot 的部份
-但這邊沒有 因為我看不懂先刪掉了
+ref:
+- https://github.com/ElthaTeng/multiline-bayesian-modeling
 
-沒有存太多東西下來, 因為只 fit one pixel, 
-隨時重跑都是可以的
+update: 2026-08-12, Use new model that build BY MYSELF! (lots uncertainty)
+        2026-08-14, Just good news to know: given out chi2_reduce ~= 0.98 
+                    in pixel (43, 43) :D
 '''
 
-# --------------------------------- Import Module --------------------------------- #
+# ------------------------ Import Module ---------------------- #
 from astropy.io import fits
 import matplotlib.pyplot as plt
 #import matplotlib.lines as mlines
 import numpy as np
 
-# ------------------------------- Path Variables ---------------------------------- #
+# ---------------------- Path Variables ----------------------- #
 projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus' # feifei
 modelPath = f'{projectRoot}/data/model_npy'
-mom0Path = f'{projectRoot}/data/mom0_npy'
-emapPath = f'{projectRoot}/data/error_map'
-productPath = f'{projectRoot}/products'
+mapPath = f'{projectRoot}/data/regrid_map_nyq'
+productPath = f'{projectRoot}/products/fittingResult_onepix'
 
-ndmodel = 6
-
-# -------------------------------- Basic Variables -------------------------------- #
-pix_y, pix_x = 439, 396
+# ---------------------- Basic Variables ---------------------- #
+pix_y, pix_x = 43, 43
 caliError = 0.1 # calibration error, by Eltha
 
 # ((molespiece-transis), 要用 mask 掉多少 sigma 的 mom0)
-moles_info = [('co-10',   3.0), 
-              ('13co-10', 3.0), 
-              #('c18o-10', 3.0), # bad value @@ 
-              ('co-21',   3.0), 
-              ('13co-21', 3.0), 
-              ('c18o-21', 3.0),
-              ('co-32',   3.0)
+moles_info = [('co-10',   1.0), 
+              ('co-21',   1.0), 
+              ('co-32',   1.0),
+              ('13co-10', 1.0),
+              ('13co-21', 1.0), 
+              ('c18o-21', 1.0),
              ]
-nline = len(moles_info)
+with_bf = True
 fitting_material = {}
 
-# ------------------------ Get Modeling Material ---------------------------------- #
+# --------------------- Get Modeling Material ------------------ #
+phyArray = np.load(f'{modelPath}/phy_plain-model_Tk-nH2-Nco.npy') # for 反推, only need N12co
+
+if with_bf:
+    Phib = np.load(f'{modelPath}/phy_plain-model_Phibf.npy')
+    num_para = 4
+else:
+    num_para = 3
+
 for molename, nsig in moles_info:
     # Load Flux Model (.npy)
-    flux_model = np.load(f'{modelPath}/flux_{ndmodel}d-coarse2_{molename}.npy')
+    flux_model = np.load(f'{modelPath}/flux_plain-model_{num_para}para_{molename}.npy')
     # Load Real Flux Data from mom0 (.npy)
-    flux_obs = np.load(f'{mom0Path}/mom0_unitK_reproj_{molename}_smooth3.2as_{nsig}sigma.npy')[pix_y, pix_x]
+    flux_obs = np.load(f'{mapPath}/mom0_{molename}_smooth3.2as_{nsig}sigma_regrid.npy')[pix_y, pix_x]
     # Import Error Maps (.fits)
-    emap = fits.open(f'{emapPath}/emap_unitK_reproj_{molename}_smooth3.2as.fits')[0].data[pix_y, pix_x]
+    emap = fits.open(f'{mapPath}/emap_{molename}_regrid.fits')[0].data[pix_y, pix_x]
 
     # Error != Noise(from emap)
     error = np.sqrt(emap**2 + (caliError * flux_obs)**2)
@@ -62,18 +67,17 @@ for molename, nsig in moles_info:
         "error": error
     }
 
-# ------------------------ Show Something.. ---------------------------------- #
+# -------------------- Show Something.. ----------------------- #
 print()
-# Maybe Flux Information?
 print('< Flux Information >')
 for molename, material_set in fitting_material.items():
     flux_obs = material_set["flux_obs"]
     error = material_set["error"]
-    print(f'{molename:<8}: {flux_obs:>7.3f} ± {error:<5.2f} K km s-1') # veryy beautifulll
+    print(f'{molename:<8}: {flux_obs:>7.3f} ± {error:<5.2f} K km s-1')
 print()
-        
-# NaN in flux_model?
+'''
 print('< NaN in Model?>')
+# If caculation of RADEX didn't converge, a NaN will be filled into flux model.
 print("WARNING: If there is 'NaN' in flux model, chi2_sum will become a piece of shit.")
 for molename, material_set in fitting_material.items():
     if np.isnan(material_set["flux_model"]).any():
@@ -81,16 +85,20 @@ for molename, material_set in fitting_material.items():
     else:
         print(f'{molename:>7} has no NaN in flux model :)')
 print()
+'''
 
-# ----------------------------------- Chi2 ----------------------------------- #
-# Compute chi^2 Array
-model_shape = fitting_material['c18o-21']['flux_model'].shape # any molename can work
+# --------------------------- Chi2 ----------------------------- #
+# Compute chi2 Array
+model_shape = fitting_material['c18o-21']['flux_model'].shape # any molename can work, (12012, 14)
 chi2_sum = np.zeros(model_shape)
+
 for molename, material_set in fitting_material.items():
-    chi2_sum += ((material_set["flux_model"] - material_set["flux_obs"]) / material_set["error"]) ** 2
+    line_chi2 = ((material_set["flux_model"] - material_set["flux_obs"]) / material_set["error"]) ** 2
+    chi2_sum += line_chi2
 
 chi2_min = np.nanmin(chi2_sum)
-best_set = np.unravel_index(np.nanargmin(chi2_sum, axis=None), model_shape)
+best_set = np.unravel_index(np.nanargmin(chi2_sum, axis=None), # 這個好欸 model 長啥樣都能用
+                            model_shape) # (phyCondi, Phib), 應該是這樣
 
 # Chi2 Contribution of Each Line
 print('< Chi2 Contribution of Each Line >')
@@ -99,31 +107,19 @@ for molename, material_set in fitting_material.items():
     print(f"{molename:>7}'s chi2 = {line_chi2:.3f}")
 print()
 
-# --------------------------- Show Fitting Results ------------------------------ #
-# (chi2_min, best_set)
-print(f'minumum chi2 = {chi2_min:.2f}, at best set: {best_set}')
-print("The best set's order follow [Nco, Tk, nH2, X(12/13), X(13/18), Phi_bf]")
-print()
+# -------------------- Show Fitting Results --------------------- #
+print(f'< Best Physical Conditions? >  minumum chi2 = {chi2_min:.2f}')
+best_phy = phyArray[best_set[0]]
+Tk_best, nH2_best, Nco_best = best_phy[0], best_phy[1], best_phy[2]
+print(f"{'Best Kinetic Temperature':<24} {'(T_k)':<9}: {Tk_best:<5} K")
+print(f"{'Best Number Density':<24} {'(n_H2)':<9}: {nH2_best:<5} cm^-3")
+print(f"{'Best CO Column Density':<24} {'(N_co)':<9}: {Nco_best:<5} cm^-2")
+if with_bf:
+    Phi_best = Phib[best_set[1]]
+    print(f"{'Best Beam Filling Factor':<24} {'(Phi_bf)':<9}: {Phi_best:<5}")
 
-# Get Physical Conditions from best_set
-Nco_best = np.round(0.2 * best_set[0] + 15., 1)
-Tk_best = 0.1 * best_set[1] + 1.
-nH2_best = 0.2 * best_set[2] + 2.
-X12to13_best = np.round(10 * best_set[3] + 10., 1)
-X13to18_best = np.round(1 * best_set[4] + 2., 1)
-Phi_best = np.round(0.05 * best_set[5] + 0.05, 1)
 
-# (Physical Conditions)
-print('< Best Physical Conditions? >')
-print(f"{'Best CO Column Density':<30} {'(N_co)':<9}: 10^{Nco_best:<5} cm^-2")
-print(f"{'Best Kinetic Temperature':<30} {'(T_k)':<9}: 10^{Tk_best:<5} K")
-print(f"{'Best Number Density':<30} {'(n_H2)':<9}: 10^{nH2_best:<5} cm^-3")
-print(f"{'Best 12CO/13CO Abundance Ratio':<30} {'(X_12/13)':<9}: {X12to13_best:<5}")
-print(f"{'Best 13CO/C18O Abundance Ratio':<30} {'(X_13/18)':<9}: {X13to18_best:<5}")
-print(f"{'Best Beam Filling Factor':<30} {'(Phi_bf)':<9}: {Phi_best:<5}")
-      
-np.save(f'{productPath}/chi2_tt/chi2Sum_{ndmodel}d-coarse2_tt_{pix_x}-{pix_y}', chi2_sum)
-
+'''
 # ------------------------- flux_obs v.s flux_model ----------------------------- #
 mole_name_list = []
 flux_obs_pix = []
@@ -137,7 +133,6 @@ for molename, _ in moles_info:
     error_pix.append(fitting_material[molename]["error"])
 
 x_axis = np.arange(len(moles_info))
-
 
 plt.figure(figsize=(6, 5))
 plt.scatter(x_axis, flux_model_pix,
@@ -153,5 +148,6 @@ plt.xlabel('molecular lines')
 plt.ylabel('Flux (K km/s)')
 plt.legend()
 plt.title(f'Flux Comparison of ({pix_x}, {pix_y}),  chi2={chi2_min:.2f}')
-plt.savefig(f'{productPath}/figure/fig_fluxComparison_{nline}_onepix.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'{productPath}/fig_fluxComparison_onepix.png', dpi=300, bbox_inches='tight')
 plt.show()
+'''
