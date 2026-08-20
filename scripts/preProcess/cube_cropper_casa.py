@@ -5,6 +5,7 @@ Leave at least 1x width as the spectral line in both sides for error estimation.
 
 update: 2026-06-30, Use casatools to modify header key ['restfreq']
                     and increase the recognition of status hints.
+        2026-08-20, Add new line: CO(6-5) from MVP data of new cycle.
 '''
 import glob
 import shutil
@@ -23,7 +24,8 @@ wanted = [
     ('c18o-21', '6a', '1000~3810', 2.19560E+11),
     ('13co-21', '6a', '20~3070',   2.20399E+11),
     ('co-21',   '6a', '1510~3830', 2.30538E+11),
-    ('co-32',   '7',  '70~415',    3.45796E+11),
+    ('co-32',   '7',  '70~415',    3.45796E+11), # Izumi
+    ('co-65',   '9h', '23~1863',   6.91473E+11),
 ]
 
 # Main
