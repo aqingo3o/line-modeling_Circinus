@@ -1,7 +1,8 @@
-# Mainly from github: Hello_Circinus/miniscripts
-# A script for full CASA
+# Script for full CASA, 
+# better run this on server due to high memory request.
 '''
-convole to the same beam, by full CASA
+Third step od data preprocessing.
+Convole to the same beam, by full CASA
 Make sure {projectRoot}/data/alma_cube/smooth_cube/ is exsist
 
 !! If 'casa killed', it must because RAM is explore.
@@ -11,9 +12,11 @@ Ofcourse running time would become double :(
 
 !! Please check spectral axis by CARTA (or something like that) after smoothing.
 (有前科的) 可能會有譜線強度在某個 channel 之後全部歸零的情況, 個人猜測很高機率是硬體的鍋
+So check the spectral profile by CARTA before making mom0 maps.
 
 update: 2026-06-??, Server(blackhole) can operate even larger cubes (9 GB) <333
-update: 2026-07-05, smooth cubes under K_cube/
+        2026-07-05, Smooth cubes under K_cube/
+        2026-08-21, Smooth cubes to 0.41 arcsec for high-J lines.
 '''
 #from casatasks import importfits, imsmooth, exportfits
 import shutil
@@ -25,12 +28,14 @@ dataPath = f'{projectRoot}/data/alma_cube'
 
 # Parameters
 kernel = 'gauss'
-beamSize = 3.2 # arcsec
+beamSize = 0.41 # arcsec
 targetBeam = {'major': f'{beamSize}arcsec', 'minor': f'{beamSize}arcsec', 'pa': '0deg'} # round beam
-wanted = [  # (mole, band, restFrequency(Hz)
-    ('co-10', '3b'), ('co-21', '6a'), ('co-32', '7'),
-    ('13co-10', '3a'), ('13co-21', '6a'),
-    ('c18o-21', '6a'),
+wanted = [  # (mole, bandname)
+    #('co-10', '3b'),
+    ('co-21', '6a'), ('co-32', '7'), ('co-65', '9h'),
+    #('13co-10', '3a'),
+    ('13co-21', '6a'),
+    #('c18o-21', '6a'),
 ]
 
 # Smoothing
