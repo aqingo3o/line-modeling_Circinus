@@ -1,13 +1,14 @@
-# Script for feifei (hard-coded path),
-# use matplotlib<3.8 (3.7.5 here) to avoid
+# Script for feifei (plt.show()), use matplotlib<3.8 (3.7.5 here) to avoid
 # "ImportError: cannot import name 'AnchoredEllipse' from 'mpl_toolkits.axes_grid1.anchored_artists'"
+# Also work on server (blackhole), but no figure will show.
 '''
 Error estimation of each spectral line for modeling.
 σ_mom0 = σ * Δv * sqrt(N_line)
 Material: datacubes (smooth by CASA, under {projectRoot}/data/alma_cube/smooth_cube)
 
 update: 2026-06-23, After Eltha's advice.
-        2026-07-07, Revise the hard-code mesage in header and comments. (about intensity unit)
+        2026-07-07, Revise the hard-code mesage in header. (about intensity unit)
+        2026-08-21, Make error map for resolve data (0.41 arcsec).
 '''
 
 from astropy import constants
@@ -23,32 +24,37 @@ warnings.filterwarnings('ignore', message='.*PV2.*')
 warnings.filterwarnings('ignore', message='.*Stokes cube.*')
 
 # ------------------------------- Path ------------------------------- #
-projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus'
+projectRoot = '/home/aqing/Documents/line-modeling_Circinus' # blackhole
+projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus' # fei
 dataPath = f'{projectRoot}/data/alma_cube/smoothed_cube'
 emapPath = f'{projectRoot}/data/error_map'
 
 # (molename, band_fileName,
 # line-free(channel range pair), integral_range(channel))
-moles_info = [('co-10',   '3b', 
-               (10, 975, 1420, 2375),   (1057, 1338)),
-              ('13co-10', '3a', 
-               (10, 535, 920, 1830),    (573, 844)),
+moles_info = [#('co-10',   '3b', 
+               #(10, 975, 1420, 2375),   (1057, 1338)),
+              #('13co-10', '3a', 
+               #(10, 535, 920, 1830),    (573, 844)),
               ('co-21',   '6a', 
                (10, 1100, 1866, 2310),  (1125, 1799)),
               ('13co-21', '6a',
                (10, 619, 1465, 2980),   (759, 1278)),
-              ('c18o-21', '6a',
-               (127, 1426, 2283, 2386), (1640, 2100)),
+              #('c18o-21', '6a',
+               #(127, 1426, 2283, 2386), (1640, 2100)),
               ('co-32',   '7',
                (10, 92, 240, 340),      (100, 233)), # Izumi
+              ('co-65',   '9h',
+               (9, 269, 1027, 1825),    (1640, 2100)),
               ]
+bsize = 0.41 # BMAJ in file name after smoothing, the unii is arcsec.
+             # Now we have [3.2, 0.41]
 
 # --------------------------- Get Info from Cube --------------------------- #
 cube_info = {}
 for molename, band, linefree_rang, _ in moles_info:
     # Load the cube
-    cube = SpectralCube.read(f'{dataPath}/cube_Band{band}_{molename}_smooth3.2as.fits')
-    print(f'cube_Band{band}_{molename}_cropped.fits was loaded.')
+    cube = SpectralCube.read(f'{dataPath}/cube_Band{band}_{molename}_smooth{bsize}as.fits')
+    print(f'cube_Band{band}_{molename}_smooth{bsize}.fits was loaded.')
 
     # Line-free channels
     print('Please wait for array concatenation...', end='')
@@ -97,8 +103,7 @@ header_ref_kw = ['BMAJ', 'BMIN', 'BPA', 'RESTFRQ']
 Require beam information for futher steps (maybe)
 '''
 for molename, _, _, _  in moles_info:
-    #fitsOut = f'{emapPath}/emap_{molename}_smooth3.2as.fits'
-    fitsOut = f'{emapPath}/emap_{molename}.fits'
+    fitsOut = f'{emapPath}/emap_{molename}_smooth{bsize}.fits'
     errorMap = cube_info[molename]["emap"].value # unit: K*km/s, but no unit in FITS
 
     # Revise Header
@@ -129,5 +134,5 @@ for molename, _, _, _ in moles_info:
     fig_pos += 1 # 超噁爛超危險寫法但我有點懶得改了啦哈哈屁眼
 
 plt.tight_layout()
-plt.savefig(f'{projectRoot}/products/figure/fig_errorMap.png', dpi=300)
+plt.savefig(f'{projectRoot}/products/figure/fig_errorMap_{bsize}.png', dpi=300)
 plt.show()
