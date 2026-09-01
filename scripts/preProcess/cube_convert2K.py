@@ -1,5 +1,6 @@
 # Script for both server (blackhole) and feifei
 '''
+Second step, after cropping the cubes.
 Convert flux unit from Jy/beam to Kelvin **before** cube smoothing.
 
 ref:
@@ -9,6 +10,7 @@ Tech ref:
     https://docs.astropy.org/en/stable/api/astropy.units.brightness_temperature.html#astropy.units.brightness_temperature
 
 update: 2026-07-05, Do the unit conversion in cube state and before smoothing.
+        2026-08-20, Add new line: CO(6-5) from MVP data of new cycle.
 '''
 
 # --------------------------------- Import Module -------------------------------- #
@@ -24,19 +26,20 @@ warnings.filterwarnings('ignore', message='.*PV2_.*')
 
 # ------------------------------- Path Variables ---------------------------------- #
 projectRoot = '/home/aqing/Documents/line-modeling_Circinus' # blackhole
-#projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus' # feifei, for testing
+projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus' # feifei, for testing
 dataPath = f'{projectRoot}/data/alma_cube/cropped_cube'
 KPath = f'{projectRoot}/data/alma_cube/K_cube'
  
 # --------------------------- Constants & Variables ------------------------------- #
 fwhm2sigma = 1. / (8 * np.log(2))**0.5  # constant of Gaussian beam
 z = 0.001448 * u.dimensionless_unscaled # red shift of the Circinus
-moles_info = [('co-10',    '3b'),
+moles_info = [#('co-10',   '3b'),
               #('13co-10', '3a'),
               #('co-21',   '6a'),
               #('13co-21', '6a'),
               #('c18o-21', '6a'),
               #('co-32',   '7'),
+              ('co-65',   '9h')
               ]
 
 # ------------------------- Conversion & Save as FITS ----------------------------- #
