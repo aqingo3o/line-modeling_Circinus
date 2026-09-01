@@ -2,20 +2,24 @@
 # Put this script under {projectRoot}, (i.e. /home/aqing/Documents/line-modleing_Circiuns/)
 # Remaining dependency paths will be created automatically.
 '''
-I think something unexcepted happend in Eltha's code
+I think something unexcepted happend in Eltha's code (? maybe not)
 so I write another script for RADEX model grid.
-因為一些發現, 總之要自己寫這個程式了, 不知道是大事很妙還是大事不妙
-雖然這個程式並非出現在工作的前期 (也就是我已經擁有熟成的檔案結構)
+
+Though this version of script isn't appear in early stage of my work
+(so mature folder system has been built)
 但為了後續復現的方便 && 這隻程式高度資料夾路徑依賴
 為了防止程式開始跑了才發現很多東西不存在, 我保留了自動建立檔案結構的部分。
 
 然後靠北我根本不知道這是不是對的, 幹
 
-程式湯底來自 Eltha 女士的 radex_pipeline.py
+ref: Eltha's radex_pipeline.py from her github repo.
 
 Current version remove two *Abudance Ratio* as member of model grid.
 Because I'm not sure if we need abudance ratio for science purpose or not.
 Fewer fitting parameters may led to something good?
+
+update: 2026-09-01, Just can't believe it is September now...
+                    Fix the file name issue like 6309600000000000.0 etc.
 '''
 
 # -------------------------- Import Module --------------------------- #
@@ -32,7 +36,7 @@ import time
 print('Start creating folder structure for radex_fluxModel.py ...')
 projectRoot = Path(__file__).resolve().parents[0] # line-modeling_Circinus, no slash
 # First-level
-projectRoot_member = ['data', 'docs', 'exp', 'products', 'scripts']
+projectRoot_member = ['data', 'docs', 'products', 'scripts']
 for i in projectRoot_member:
     projectRoot_sub = f'{projectRoot}/{i}'
     if not os.path.exists(projectRoot_sub):
@@ -56,27 +60,30 @@ print()
 #'''
 
 # -------------------------- Path Variables -------------------------- #
-#projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus'
+projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus'
 radexioPath = f'{projectRoot}/data/radex_io' # a VAST number of files
 npyPath = f'{projectRoot}/data/model_npy'    # extracted flux model
 
 start_time = time.time()
 # ------------------------- Basic Variables ------------------------- #
 num_cores = 20  # joblib
-linewidth = 300 # km/s
+linewidth = 25 # km/s
 
 phy_para = ['Kinetic Temperature', 'Number Density', '12CO Column Density'] # part of keys of model_grid
 X1213 = 40 # Abundance ratio, Hitschfeld(2008)
 X1318 = 8  # ?
 
-mole_species = ['co', '13co', 'c18o']
-transis = ['10', '21', '32', '43'] # (i think) model grids should cover everything
+mole_species = ['co', '13co', 
+                #'c18o'
+                ]
+transis = ['10', '21', '32', '43', '54', '65'] # Change the frequency range in ln118 !!
 
 # ----------------- Set Physical Conditions Range ------------------- #
 # Grid steps
 expstep_Tk = 0.1
 expstep_nH2 = 0.2
 expstep_Nco = expstep_nH2 # step size for Nco and nH2 should be the same (idky)
+
 model_grid = {
     "Kinetic Temperature": {
         "fracExp": np.arange(0.7, 2.9,  step=expstep_Tk),  # fracExp 代表在指數部分含有小數
@@ -90,9 +97,7 @@ model_grid = {
 }
 
 # ------------------------- Pre-processing ------------------------- #
-'''
-老哥這個檔名真的比較噁心了
-'''
+# Generate model grid
 for paraname in phy_para:
     aeb = []
     for fexp in model_grid[paraname]["fracExp"]:
@@ -103,15 +108,29 @@ for paraname in phy_para:
 N12co_aeb = model_grid["12CO Column Density"]["AeB"]
 model_grid["13CO Column Density"] = {"AeB": N12co_aeb / X1213}
 model_grid["C18O Column Density"] = {"AeB": N12co_aeb / (X1213 * X1318)}
-
 #print(model_grid.keys())
+
+# Scientific notation
+'''
+Usually, this formatting function is used only for styling filenames.
+the exact values used in calculations should remain unaffected.
+SO you can set 'digit' what ever you want.
+'''
+def sciFmt (val, digit=2):
+    coee, expp = f'{val:.{digit}e}'.split('e')
+    expp = int(expp)
+    if '.' in coee:
+        coee = coee.rstrip('0').rstrip('.')
+    return f'{coee}e{expp}'
 
 # ------------------------- writeInputs(): ------------------------- #
 def writeInput(molesp, Tk, nH2, Nco):
-    file = open(f'{radexioPath}/input_{molesp}/{Tk}_{nH2}_{Nco}.inp', 'w')
+    physet = f'{sciFmt(Tk)}_{sciFmt(nH2)}_{sciFmt(Nco)}' # use scientific notation
+
+    file = open(f'{radexioPath}/input_{molesp}/{physet}.inp', 'w')
     file.write(f'{molesp}.dat\n')
-    file.write(f'{radexioPath}/output_{molesp}/{Tk}_{nH2}_{Nco}.out\n')
-    file.write('100 500\n')
+    file.write(f'{radexioPath}/output_{molesp}/{physet}.out\n')
+    file.write('100 700\n') # frequency range (GHz), co-65: 691GHz
     file.write(f'{Tk}\n')
     file.write('1\n')
     file.write('H2\n')
@@ -142,7 +161,7 @@ print()
 
 # --------------------------- runRADEX(): -------------------------- #
 def runRADEX(molesp, Tk ,nH2, Nco):
-    inpPath = f'{radexioPath}/input_{molesp}/{Tk}_{nH2}_{Nco}.inp'
+    inpPath = f'{radexioPath}/input_{molesp}/{sciFmt(Tk)}_{sciFmt(nH2)}_{sciFmt(Nco)}.inp'
     # create tempoary indep-folder for each caculation, avoiding "Error open radex.log"
     with tempfile.TemporaryDirectory() as temp_dir:
         with open(inpPath, 'r') as inpFile:
@@ -175,12 +194,12 @@ print()
 # ------------------------- Get Model Flux ------------------------- #
 flux_model = {}
 def getMflux(molesp, Tk, nH2, Nco):
-    physet = f'{Tk}_{nH2}_{Nco}'
+    physet = f'{sciFmt(Tk)}_{sciFmt(nH2)}_{sciFmt(Nco)}'
     outFile = f'{radexioPath}/output_{molesp}/{physet}.out'
     # Extract reliable flux predictions (avoid those with convergence issues)
     if np.loadtxt(outFile, skiprows=10, max_rows=1, dtype='str')[3] == '****':
         mflux = np.full(len(transis), np.nan)
-        print(f'{outFile} has converage issue :(') # 這邊像要做一個寫入啊哈, 但不是必要的
+        print(f'{outFile} has converage issue :(') # 這邊想要做一個寫入, 但不是必要的
     else:
         mflux = np.genfromtxt(outFile, skip_header=13)[:, 11]
     return physet, mflux
@@ -238,14 +257,3 @@ for molename in flux_model.keys():
 model_time = time.time()
 print('Scaled flux models are saved.')
 print()
-
-# ----------------------- Write Time Records ----------------------- #
-'''
-timerec = open(f'{projectRoot}/docs/radex-pipeline_timeRecord.txt', 'w')
-timerec.write(f'It took {(input_time - start_time):.2f} seconds to write all .inp files.\n')
-timerec.write(f'It took {(radex_time - input_time):.2f} seconds to finish running RADEX.\n')
-timerec.write(f'It took {(model_time - radex_time):.2f} seconds to add beam filling factor.\n')
-timerec.close()
-print()
-'''
-print('Sincere congratulations! This script arrived here without any obstacles. <3')
