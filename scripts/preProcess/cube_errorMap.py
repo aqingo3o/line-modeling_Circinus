@@ -44,7 +44,7 @@ moles_info = [#('co-10',   '3b',
               ('co-32',   '7',
                (10, 92, 240, 340),      (100, 233)), # Izumi
               ('co-65',   '9h',
-               (9, 269, 1027, 1825),    (1640, 2100)),
+               (9, 269, 1027, 1825),    (305, 1640)),
               ]
 bsize = 0.41 # BMAJ in file name after smoothing, the unii is arcsec.
              # Now we have [3.2, 0.41]
