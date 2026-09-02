@@ -1,6 +1,6 @@
 # Script for both server (blackhole) and feifei.
 '''
-This is the last step before fitting.
+This is the last step before flux fitting.
 Reproject mom0 maps and error maps with Nyquist sampling.
 That is, pixel size = 0.5 * beam size.
 - pixel size (deg): CDELT1, CDELT2
@@ -17,9 +17,10 @@ update: 2026-07-07, Seperate steps from convert2KReproj.py
                        2. map_regrid.py   (this script)
         2026-07-27, Use Nyquist sampling instead of CO(2-1) as regrid template.
                     Aim to speed up the fitting caculation.
+        2026-08-21, Regriding resolved maps (beam = 0.41 arcsec), also smaller fov.
 '''
 
-# --------------------------------- Import Module -------------------------------- #
+# ----------------------- Import Module ----------------------- #
 from astropy.io import fits
 from astropy.wcs import WCS
 import glob
@@ -27,7 +28,7 @@ import numpy as np
 from reproject import reproject_adaptive
 import warnings
 
-# ---------------------------- 因為噴一堆東西有點煩煩的 ------------------------------- #
+# -------------------- 因為噴一堆東西有點煩煩的 -------------------- #
 warnings.filterwarnings('ignore', message='.*PV2.*')
 warnings.filterwarnings('ignore', message='.*made the change.*')
 
@@ -36,21 +37,26 @@ projectRoot = '/home/aqing/Documents/line-modeling_Circinus' # blackhole
 projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus' # fei
 mom0Path = f'{projectRoot}/data/mom0_map'
 emapPath = f'{projectRoot}/data/error_map'
-regridPath = f'{projectRoot}/data/regrid_map_nyq' # put everything togetherrr
+regridPath = f'{projectRoot}/data/regrid_map_resolve' # put emap & mom0 togetherrr
 
 # --------------------------- Constants & Variables ------------------------------- #
 count = 1 # for counting...
 maps_fn = []
 maps_info = {}
-cbeam = 3.2 / 3600 # common beam, unit: deg
+bsize = 0.41 # arcsec
+cbeam = bsize / 3600 # common beam, unit: deg
+tinyfov_header = fits.open(
+    f'{mom0Path}/mom0_co-65_smooth{bsize}as_4sigma.fits' # use the one with smallest fov.
+    )[0].header
 
 # -------------------- Load Maps andGet Maps' Files **Name** ---------------------- #
 '''
 Due to emaps and mom0 are in different folder 
 and i still need filename to name files after regrid...
 That is why this step looks the way it does ;)
+if TMI, remove them after this script.
 '''
-for i in glob.glob(f'{mom0Path}/mom0_*.fits'): # get mom0_map filename
+for i in glob.glob(f'{mom0Path}/mom0_*smooth{bsize}as*.fits'): # get mom0_map filename
     fn = i[len(mom0Path)+1 : -5] # Path(i).stem also works, but need extra module.
     hdul = fits.open(f'{mom0Path}/{fn}.fits')
     maps_info[fn] = {            # super LONG index but i dont car
@@ -61,7 +67,7 @@ for i in glob.glob(f'{mom0Path}/mom0_*.fits'): # get mom0_map filename
     hdul.close()
     maps_fn.append(fn)
 
-for i in glob.glob(f'{emapPath}/emap_*.fits'): # get error_map filename
+for i in glob.glob(f'{emapPath}/emap_*smooth{bsize}as*.fits'): # get error_map filename
     fn = i[len(emapPath)+1 : -5]
     hdul = fits.open(f'{emapPath}/{fn}.fits')
     maps_info[fn] = {
@@ -73,14 +79,15 @@ for i in glob.glob(f'{emapPath}/emap_*.fits'): # get error_map filename
 
 # ---------------------------- Make Regrid Template ------------------------------ #
 '''
-Use CO(3-2) as template's base because CO(3-2) has the smallest fov of 6 lines.
+Use the mom0 map with smallest fov as template's base of 6 (or 4?) 6 lines.
 Get sky coordinate range from it and set pixel size by Nyquist sampling.
 
 Spatial regrid template can be "wcs2" object,
 that is: WCS(a_header).celestial, a kind of WCS obj. 
 (some time wcs2 == WCS)
 
-(print(WCS(co32_header).celestial) to gain some concept :P)
+(print(WCS(tinyfov_header).celestial) to gain some concept :P)
+below is CO(3-2)'s WCS object.
 --------------- [Inside wcs2] ---------------
 Number of WCS axes: 2
 CTYPE : 'RA---SIN' 'DEC--SIN'
@@ -96,22 +103,21 @@ NAXIS1&2 (how may pixels along two spatial axes) and
 CRPIX1&2 (the centeral pixel) should also be revised!
 Because these will be different b/a I change the pixel scale.
 '''
-co32_header = fits.open(f'{mom0Path}/mom0_co-32_smooth3.2as_3.0sigma.fits')[0].header
 
 # Change Pixel Size (pixel scale) by Nyquist Sampling
-template_header = co32_header.copy()
+template_header = tinyfov_header.copy()
 target_pixsize = 0.1 * cbeam #### 89*89
 template_header['CDELT1'] = -target_pixsize  # RA, 向東為負, 真的相信我把 WCS(co32_header)先印出來會比較輕鬆
 template_header['CDELT2'] = target_pixsize   # DEC
 
 # Revise other WCS keywords
-scale1 = abs(co32_header['CDELT1'] / target_pixsize)
-scale2 = abs(co32_header['CDELT2'] / target_pixsize) # may data is not square?
+scale1 = abs(tinyfov_header['CDELT1'] / target_pixsize)
+scale2 = abs(tinyfov_header['CDELT2'] / target_pixsize) # may data is not square?
 
-template_header['NAXIS1'] = int(co32_header['NAXIS1'] * scale1)
-template_header['NAXIS2'] = int(co32_header['NAXIS2'] * scale2)
-template_header['CRPIX1'] = (co32_header['CRPIX1'] - 1) * scale1
-template_header['CRPIX2'] = (co32_header['CRPIX2'] - 1) * scale2
+template_header['NAXIS1'] = int(tinyfov_header['NAXIS1'] * scale1)
+template_header['NAXIS2'] = int(tinyfov_header['NAXIS2'] * scale2)
+template_header['CRPIX1'] = (tinyfov_header['CRPIX1'] - 1) * scale1
+template_header['CRPIX2'] = (tinyfov_header['CRPIX2'] - 1) * scale2
 print(f"New data_shape is: {(template_header['NAXIS1'], template_header['NAXIS2'])}")
 
 # Get Regrid WCS template
