@@ -20,6 +20,8 @@ Fewer fitting parameters may led to something good?
 
 update: 2026-09-01, Just can't believe it is September now...
                     Fix the file name issue like 6309600000000000.0 etc.
+        2026-09-09, Slightly extend Tk range (up to 794 K),
+                    and HCO+ into model grid.
 '''
 
 # -------------------------- Import Module --------------------------- #
@@ -43,14 +45,14 @@ for i in projectRoot_member:
         os.makedirs(projectRoot_sub)
 # Second-level
 print('Strat building second & third-level subfolders under projectRoot...')
-under_data = ['radex_io', 'model_npy']
+under_data = ['radex_io', 'model_npy', 'model_with-hco+']
 for i in under_data:
     dataPath_sub = f'{projectRoot}/data/{i}'
     if not os.path.exists(dataPath_sub):
         os.makedirs(dataPath_sub)
 # Third-level
-under_radexio = ['input_co',  'input_13co',  'input_c18o',
-                 'output_co', 'output_13co', 'output_c18o']
+under_radexio = ['input_co',  'input_13co',  'input_c18o', 'input_hco+',
+                 'output_co', 'output_13co', 'output_c18o', 'output_hco+']
 for i in under_radexio:
     ioPath_sub = f'{projectRoot}/data/radex_io/{i}' # radex_io/ is a hard-coding
     if not os.path.exists(ioPath_sub):
@@ -62,21 +64,43 @@ print()
 # -------------------------- Path Variables -------------------------- #
 projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus'
 radexioPath = f'{projectRoot}/data/radex_io' # a VAST number of files
-npyPath = f'{projectRoot}/data/model_npy'    # extracted flux model
+npyPath = f'{projectRoot}/data/model_with-hco+'    # extracted flux model
 
 start_time = time.time()
 # ------------------------- Basic Variables ------------------------- #
 num_cores = 20  # joblib
 linewidth = 25 # km/s
 
-phy_para = ['Kinetic Temperature', 'Number Density', '12CO Column Density'] # part of keys of model_grid
+phy_para = ['Kinetic Temperature', 'Number Density', '12CO Column Density',
+            'HCO+ Abundance', ] # part of keys of model_grid
+X12co = 3e-4 # CO-to-H2 abundance, Eltha(2022)
 X1213 = 40 # Abundance ratio, Hitschfeld(2008)
 X1318 = 8  # ?
 
-mole_species = ['co', '13co', 
+mole_species = ['co', '13co', 'hco+'
                 #'c18o'
                 ]
 transis = ['10', '21', '32', '43', '54', '65'] # Change the frequency range in ln118 !!
+
+# -------------------- def: Scientific notation -------------------- #
+'''
+Usually, this formatting function is used only for styling filenames.
+the exact values used in calculations should remain unaffected.
+SO you can set 'digit' what ever you want.
+'''
+def sciFmt (val, digit=2):
+    if isinstance(val, str):
+        return 'nan'
+    else: # else 有點不嚴謹了, 但不管 這是我自用的啦
+        coee, expp = f'{val:.{digit}e}'.split('e')
+        expp = int(expp)
+        if '.' in coee:
+            coee = coee.rstrip('0').rstrip('.')
+        return f'{coee}e{expp}'
+
+print(sciFmt(33127000000000000000000000000))
+print(type('no hco+'))
+print(sciFmt('no hco+'))
 
 # ----------------- Set Physical Conditions Range ------------------- #
 # Grid steps
@@ -86,13 +110,16 @@ expstep_Nco = expstep_nH2 # step size for Nco and nH2 should be the same (idky)
 
 model_grid = {
     "Kinetic Temperature": {
-        "fracExp": np.arange(0.7, 2.9,  step=expstep_Tk),  # fracExp 代表在指數部分含有小數
+        "fracExp": np.arange(0.7, 3.0,  step=expstep_Tk),  # fracExp 代表在指數部分含有小數
     },
     "Number Density": {
         "fracExp": np.arange(2.,  5.1,  step=expstep_nH2), # 多的那 .1 是因為 arange() 會在終點前停下
     },
     "12CO Column Density": {
         "fracExp": np.arange(15., 20.1, step=expstep_Nco),
+    },
+    "HCO+ Abundance": {
+        "fracExp": np.arange(-9., -8.6, step=0.1),
     },
 }
 
@@ -108,57 +135,65 @@ for paraname in phy_para:
 N12co_aeb = model_grid["12CO Column Density"]["AeB"]
 model_grid["13CO Column Density"] = {"AeB": N12co_aeb / X1213}
 model_grid["C18O Column Density"] = {"AeB": N12co_aeb / (X1213 * X1318)}
+Xhcop_aeb = model_grid["HCO+ Abundance"]["AeB"]
+Nhcop_aeb = []
+for i in Xhcop_aeb:
+    Nhcop_aeb.append(i * N12co_aeb / X12co)
+##print(np.array(Nhcop_aeb).shape) >> (5, 26)
+model_grid["HCO+ Column Density"] = {"AeB": np.array(Nhcop_aeb)}
 #print(model_grid.keys())
 
-# Scientific notation
-'''
-Usually, this formatting function is used only for styling filenames.
-the exact values used in calculations should remain unaffected.
-SO you can set 'digit' what ever you want.
-'''
-def sciFmt (val, digit=2):
-    coee, expp = f'{val:.{digit}e}'.split('e')
-    expp = int(expp)
-    if '.' in coee:
-        coee = coee.rstrip('0').rstrip('.')
-    return f'{coee}e{expp}'
-
 # ------------------------- writeInputs(): ------------------------- #
-def writeInput(molesp, Tk, nH2, Nco):
-    physet = f'{sciFmt(Tk)}_{sciFmt(nH2)}_{sciFmt(Nco)}' # use scientific notation
+def writeInput(molesp, Tk, nH2, Ncolu, xhcop):
+    physet = f'{sciFmt(Tk)}_{sciFmt(nH2)}_{sciFmt(Ncolu)}_{sciFmt(xhcop)}' # use scientific notation
 
     file = open(f'{radexioPath}/input_{molesp}/{physet}.inp', 'w')
     file.write(f'{molesp}.dat\n')
     file.write(f'{radexioPath}/output_{molesp}/{physet}.out\n')
-    file.write('100 700\n') # frequency range (GHz), co-65: 691GHz
+    file.write('80 700\n') # frequency range (GHz), hco+-10: 89.1GHz; co-65: 691GHz
     file.write(f'{Tk}\n')
     file.write('1\n')
     file.write('H2\n')
     file.write(f'{nH2}\n')
     file.write('2.73'+'\n')
-    file.write(f'{Nco}\n')
+    file.write(f'{Ncolu}\n')
     file.write(f'{linewidth}\n')
     file.write('0\n')
     file.close()
 
 for molesp in mole_species:
-    print(f'Writing .inp files for {molesp}...')
+    xhcop = 'dont need xhco+' # Just CO family
     if molesp == 'co':
         ColumnDensityGrid = model_grid["12CO Column Density"]["AeB"]
     elif molesp == '13co':
         ColumnDensityGrid = model_grid["13CO Column Density"]["AeB"]
     elif molesp =='c18o':
         ColumnDensityGrid = model_grid["C18O Column Density"]["AeB"]
+        print(f'Writing .inp files for {molesp}...')
+    else: 
+        break ########### 並不確定是 break
     Parallel(n_jobs=num_cores)(
-        delayed(writeInput)(molesp, Tk ,nH2, Nco)
-        for Nco in ColumnDensityGrid
+        delayed(writeInput)(molesp, Tk ,nH2, Ncolu, xhcop)
+        for Ncolu in ColumnDensityGrid
         for nH2 in model_grid["Number Density"]["AeB"]
         for Tk in model_grid["Kinetic Temperature"]["AeB"]
         )
+    
+for molesp in mole_species: # HCO+
+    if molesp =='hco+':
+        ColumnDensityGrid = model_grid["HCO+ Column Density"]["AeB"]
+    Parallel(n_jobs=num_cores)(
+            delayed(writeInput)(molesp, Tk ,nH2, Ncolu, xhcop)
+            for xhcop in model_grid["HCO+ Abundance"]["AeB"]
+            for Ncolu in ColumnDensityGrid
+            for nH2 in model_grid["Number Density"]["AeB"]
+            for Tk in model_grid["Kinetic Temperature"]["AeB"]
+            )
 input_time = time.time()
 print(f'It took {(input_time - start_time):.2f} seconds to write all .inp files.')
 print()
 
+"""
 # --------------------------- runRADEX(): -------------------------- #
 def runRADEX(molesp, Tk ,nH2, Nco):
     inpPath = f'{radexioPath}/input_{molesp}/{sciFmt(Tk)}_{sciFmt(nH2)}_{sciFmt(Nco)}.inp'
@@ -220,7 +255,7 @@ for molesp in mole_species:
                     for Tk in model_grid["Kinetic Temperature"]["AeB"]
                     )
 
-    # Get model flux for each tansition
+    # Get model flux for each tansision
     for t_idx in range(len(transis)):
         mfluxArray = []
         for _, mflux in resultset:
@@ -257,3 +292,4 @@ for molename in flux_model.keys():
 model_time = time.time()
 print('Scaled flux models are saved.')
 print()
+"""
