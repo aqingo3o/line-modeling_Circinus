@@ -89,18 +89,11 @@ the exact values used in calculations should remain unaffected.
 SO you can set 'digit' what ever you want.
 '''
 def sciFmt (val, digit=2):
-    if isinstance(val, str):
-        return 'nan'
-    else: # else 有點不嚴謹了, 但不管 這是我自用的啦
-        coee, expp = f'{val:.{digit}e}'.split('e')
-        expp = int(expp)
-        if '.' in coee:
-            coee = coee.rstrip('0').rstrip('.')
-        return f'{coee}e{expp}'
-
-print(sciFmt(33127000000000000000000000000))
-print(type('no hco+'))
-print(sciFmt('no hco+'))
+    coee, expp = f'{val:.{digit}e}'.split('e')
+    expp = int(expp)
+    if '.' in coee:
+        coee = coee.rstrip('0').rstrip('.')
+    return f'{coee}e{expp}'
 
 # ----------------- Set Physical Conditions Range ------------------- #
 # Grid steps
@@ -139,12 +132,11 @@ Xhcop_aeb = model_grid["HCO+ Abundance"]["AeB"]
 Nhcop_aeb = []
 for i in Xhcop_aeb:
     Nhcop_aeb.append(i * N12co_aeb / X12co)
-##print(np.array(Nhcop_aeb).shape) >> (5, 26)
 model_grid["HCO+ Column Density"] = {"AeB": np.array(Nhcop_aeb)}
 #print(model_grid.keys())
 
 # ------------------------- writeInputs(): ------------------------- #
-def writeInput(molesp, Tk, nH2, Ncolu, xhcop):
+def writeInput(molesp, Tk, nH2, Ncolu, xhcop=None):
     physet = f'{sciFmt(Tk)}_{sciFmt(nH2)}_{sciFmt(Ncolu)}_{sciFmt(xhcop)}' # use scientific notation
 
     file = open(f'{radexioPath}/input_{molesp}/{physet}.inp', 'w')
@@ -161,34 +153,34 @@ def writeInput(molesp, Tk, nH2, Ncolu, xhcop):
     file.write('0\n')
     file.close()
 
-for molesp in mole_species:
-    xhcop = 'dont need xhco+' # Just CO family
+for molesp in mole_species: # Just CO family
     if molesp == 'co':
         ColumnDensityGrid = model_grid["12CO Column Density"]["AeB"]
     elif molesp == '13co':
         ColumnDensityGrid = model_grid["13CO Column Density"]["AeB"]
     elif molesp =='c18o':
         ColumnDensityGrid = model_grid["C18O Column Density"]["AeB"]
-        print(f'Writing .inp files for {molesp}...')
     else: 
-        break ########### 並不確定是 break
+        continue
+    print(f'Writing .inp files for {molesp}...')
     Parallel(n_jobs=num_cores)(
-        delayed(writeInput)(molesp, Tk ,nH2, Ncolu, xhcop)
+        delayed(writeInput)(molesp, Tk ,nH2, Ncolu)
         for Ncolu in ColumnDensityGrid
         for nH2 in model_grid["Number Density"]["AeB"]
         for Tk in model_grid["Kinetic Temperature"]["AeB"]
         )
     
-for molesp in mole_species: # HCO+
-    if molesp =='hco+':
-        ColumnDensityGrid = model_grid["HCO+ Column Density"]["AeB"]
+for molesp in mole_species: # Only HCO+
+    if molesp != 'hco+':
+        continue
+    ColumnDensityGrid = model_grid["HCO+ Column Density"]["AeB"]
     Parallel(n_jobs=num_cores)(
-            delayed(writeInput)(molesp, Tk ,nH2, Ncolu, xhcop)
-            for xhcop in model_grid["HCO+ Abundance"]["AeB"]
-            for Ncolu in ColumnDensityGrid
-            for nH2 in model_grid["Number Density"]["AeB"]
-            for Tk in model_grid["Kinetic Temperature"]["AeB"]
-            )
+        delayed(writeInput)(molesp, Tk, nH2, Ncolu, xhcop)
+        for xhcop in model_grid["HCO+ Abundance"]["AeB"]
+        for Ncolu in ColumnDensityGrid
+        for nH2 in model_grid["Number Density"]["AeB"]
+        for Tk in model_grid["Kinetic Temperature"]["AeB"]
+    )
 input_time = time.time()
 print(f'It took {(input_time - start_time):.2f} seconds to write all .inp files.')
 print()
