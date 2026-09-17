@@ -68,7 +68,6 @@ print()
 # -------------------------- Path Variables -------------------------- #
 projectRoot = '/Users/aqing/Documents/1004/line-modeling_Circinus'
 radexioPath = f'{projectRoot}/data/radex_io' # a VAST number of files
-npyPath = f'{projectRoot}/data/model_with-hco+'    # extracted flux model
 
 start_time = time.time()
 # ------------------------- Basic Variables ------------------------- #
@@ -82,9 +81,11 @@ if addHCOp:
     phy_para = ['Kinetic Temperature', 'Number Density', '12CO Column Density', 
                 'HCO+ Abundance',] 
     X12co = 3e-4 # CO-to-H2 abundance, Eltha(2022)
+    npyPath = f'{projectRoot}/data/model_with-hco+' # extracted flux model
 else:
     mole_species = ['co', '13co']
     phy_para = ['Kinetic Temperature', 'Number Density', '12CO Column Density',] 
+    npyPath = f'{projectRoot}/data/model_resolved' # extracted flux model
 
 # Abundance
 X1213 = 40 # Abundance ratio, Hitschfeld(2008)
