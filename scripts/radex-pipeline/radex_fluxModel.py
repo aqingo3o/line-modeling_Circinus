@@ -24,6 +24,8 @@ update: 2026-09-01, Just can't believe it is September now...
                     and HCO+ into model grid.
         2026-09-11, add `flagrow` in getMfllux(), due to radex.out of 
                     CO-family and HCO+ have different formation.
+        2026-09-17, Add an option `addHCOp (bool)` in ln77 to control 
+                    whether HCO+ lines are included in the model grid or not.
 '''
 
 # -------------------------- Import Module --------------------------- #
@@ -73,16 +75,23 @@ start_time = time.time()
 num_cores = 20  # joblib
 linewidth = 25 # km/s, from mom2.
 
-phy_para = ['Kinetic Temperature', 'Number Density', '12CO Column Density',
-            'HCO+ Abundance', ] # part of keys of model_grid
-X12co = 3e-4 # CO-to-H2 abundance, Eltha(2022)
+addHCOp = False # bool
+# part of keys of model_grid
+if addHCOp:
+    mole_species = ['co', '13co', 'hco+',]
+    phy_para = ['Kinetic Temperature', 'Number Density', '12CO Column Density', 
+                'HCO+ Abundance',] 
+    X12co = 3e-4 # CO-to-H2 abundance, Eltha(2022)
+else:
+    mole_species = ['co', '13co']
+    phy_para = ['Kinetic Temperature', 'Number Density', '12CO Column Density',] 
+
+# Abundance
 X1213 = 40 # Abundance ratio, Hitschfeld(2008)
 X1318 = 8  # ?
 
-mole_species = ['co', '13co', 'hco+',
-                #'c18o'
-                ]
-transis = ['10', '21', '32', '43', '54', '65'] # Change the frequency range in ln148 !!
+# Change the frequency range in ln148 !!
+transis = ['10', '21', '32', '43', '54', '65'] 
 
 # -------------------- def: Scientific notation -------------------- #
 '''
@@ -106,20 +115,27 @@ expstep_Tk = 0.1
 expstep_nH2 = 0.2
 expstep_Nco = expstep_nH2 # step size for Nco and nH2 should be the same (idky)
 
-model_grid = {
-    "Kinetic Temperature": {
-        "fracExp": np.arange(0.7, 3.0,  step=expstep_Tk),  # fracExp 代表在指數部分含有小數
-    },
-    "Number Density": {
-        "fracExp": np.arange(2.,  5.1,  step=expstep_nH2), # 多的那 .1 due to arange() stop before the end.
-    },
-    "12CO Column Density": {
-        "fracExp": np.arange(15., 20.1, step=expstep_Nco),
-    },
-    "HCO+ Abundance": {
-        "fracExp": np.arange(-9., -8., step=0.1),
-    },
-}
+if addHCOp :
+    model_grid = {
+        "Kinetic Temperature": {
+            "fracExp": np.arange(0.7, 3.0,  step=expstep_Tk),  # fracExp 代表在指數部分含有小數
+        },
+        "Number Density": {
+            "fracExp": np.arange(2.,  5.1,  step=expstep_nH2), # 多的那 .1 due to arange() stop before the end.
+        },
+        "12CO Column Density": {
+            "fracExp": np.arange(15., 20.1, step=expstep_Nco),
+        },
+        "HCO+ Abundance": {
+            "fracExp": np.arange(-9., -8., step=0.1),
+        },
+    }
+else:
+    model_grid = {
+        "Kinetic Temperature": {"fracExp": np.arange(0.7, 3.0,  step=expstep_Tk)},
+        "Number Density":      {"fracExp": np.arange(2.,  5.1,  step=expstep_nH2)},
+        "12CO Column Density": {"fracExp": np.arange(15., 20.1, step=expstep_Nco)},
+        }
 
 # ------------------------- Pre-processing ------------------------- #
 # Generate model grid
@@ -135,12 +151,15 @@ N12co_aeb = model_grid["12CO Column Density"]["AeB"]
 model_grid["13CO Column Density"] = {"AeB": N12co_aeb / X1213}
 model_grid["C18O Column Density"] = {"AeB": N12co_aeb / (X1213 * X1318)}
 
-# Gain HCO+ column density from HCO+ abundance and 12CO column density
-Nhcop_aeb = []
-for i in model_grid["HCO+ Abundance"]["AeB"]:
-    Nhcop_aeb.append(i * N12co_aeb / X12co)
-model_grid["HCO+ Column Density"] = {"AeB": np.array(Nhcop_aeb)}
-#print(np.array(Nhcop_aeb).shape) # >> (10, 26) where (Xhcop, N12co)
+# 有 HCO+ 才要做這個
+if addHCOp:
+    # Gain HCO+ column density from HCO+ abundance and 12CO column density
+    Nhcop_aeb = []
+    for i in model_grid["HCO+ Abundance"]["AeB"]:
+        Nhcop_aeb.append(i * N12co_aeb / X12co)
+    model_grid["HCO+ Column Density"] = {"AeB": np.array(Nhcop_aeb)}
+    #print(np.array(Nhcop_aeb).shape) # >> (10, 26) where (Xhcop, N12co)
+
 #print(model_grid.keys())
 
 # ------------------------- writeInputs(): ------------------------- #
@@ -180,19 +199,21 @@ for molesp in mole_species:
     )
 
 ### For HCO+ ###
-for molesp in mole_species:
-    if molesp != 'hco+':
-        continue
-    ColumnDensityGrid = model_grid["HCO+ Column Density"]["AeB"]
-    print(f'Writing .inp files for {molesp}...')
-    Parallel(n_jobs=num_cores)(
-        delayed(writeInput)(molesp, Tk, nH2, Ncolu, Xhcop)
-        for Xhcop, the_Nhcop in zip(model_grid["HCO+ Abundance"]["AeB"],     # More explain to this zip(),
-                                    model_grid["HCO+ Column Density"]["AeB"])# plz go to itoya!
-        for Ncolu in the_Nhcop
-        for nH2 in model_grid["Number Density"]["AeB"]
-        for Tk in model_grid["Kinetic Temperature"]["AeB"]
-    )
+if addHCOp:
+    for molesp in mole_species:
+        if molesp != 'hco+':
+            continue
+        ColumnDensityGrid = model_grid["HCO+ Column Density"]["AeB"]
+        print(f'Writing .inp files for {molesp}...')
+        Parallel(n_jobs=num_cores)(
+            delayed(writeInput)(molesp, Tk, nH2, Ncolu, Xhcop)
+            for Xhcop, the_Nhcop in zip(model_grid["HCO+ Abundance"]["AeB"],     # More explain to this zip(),
+                                        model_grid["HCO+ Column Density"]["AeB"])# plz go to itoya!
+            for Ncolu in the_Nhcop
+            for nH2 in model_grid["Number Density"]["AeB"]
+            for Tk in model_grid["Kinetic Temperature"]["AeB"]
+        )
+
 input_time = time.time()
 print(f'It took {(input_time - start_time):.2f} seconds to write all .inp files.')
 print()
@@ -230,19 +251,21 @@ for molesp in mole_species:
     )
 
 ### Only HCO+ ###
-for molesp in mole_species:
-    if molesp != 'hco+':
-        continue
-    ColumnDensityGrid = model_grid["HCO+ Column Density"]["AeB"]
-    print(f'Start RADEXing for {molesp} ...')
-    Parallel(n_jobs=num_cores)(
-        delayed(runRADEX)(molesp, Tk, nH2, Ncolu, Xhcop)
-        for Xhcop, the_Nhcop in zip(model_grid["HCO+ Abundance"]["AeB"],
-                                    model_grid["HCO+ Column Density"]["AeB"])
-        for Ncolu in the_Nhcop
-        for nH2 in model_grid["Number Density"]["AeB"]
-        for Tk in model_grid["Kinetic Temperature"]["AeB"]
-    )
+if addHCOp:
+    for molesp in mole_species:
+        if molesp != 'hco+':
+            continue
+        ColumnDensityGrid = model_grid["HCO+ Column Density"]["AeB"]
+        print(f'Start RADEXing for {molesp} ...')
+        Parallel(n_jobs=num_cores)(
+            delayed(runRADEX)(molesp, Tk, nH2, Ncolu, Xhcop)
+            for Xhcop, the_Nhcop in zip(model_grid["HCO+ Abundance"]["AeB"],
+                                        model_grid["HCO+ Column Density"]["AeB"])
+            for Ncolu in the_Nhcop
+            for nH2 in model_grid["Number Density"]["AeB"]
+            for Tk in model_grid["Kinetic Temperature"]["AeB"]
+        )
+
 radex_time = time.time()
 print(f'It took {(radex_time - input_time):.2f} seconds to finish running RADEX.')
 print()
@@ -305,37 +328,39 @@ for molesp in mole_species:
             phyArray_sub.append(float(phy)) # follow the order: Tk, nH2, Ncolu, (Xhco+, if have.)
         phyArray.append(phyArray_sub)
     physical_condi[f"Tk-nH2-N{molesp}"] = np.array(phyArray)
-       
+
+     
 ### Only HCO+ ###
-for molesp in mole_species: 
-    if molesp != 'hco+':
-        continue
-    ColumnDensityGrid = model_grid["HCO+ Column Density"]["AeB"]
-    print(f"Extracting model flux from {molesp}'s output files...")
-    resultset = Parallel(n_jobs=num_cores)( # `resultset` 裝 getMflux's return, resultset -> [physet, ]
-                    delayed(getMflux)(molesp, Tk ,nH2, Ncolu, Xhcop, flagrow=9)
-                    for Xhcop, the_Nhcop in zip(model_grid["HCO+ Abundance"]["AeB"],
-                                                model_grid["HCO+ Column Density"]["AeB"])
-                    for Ncolu in the_Nhcop
-                    for nH2 in model_grid["Number Density"]["AeB"]
-                    for Tk in model_grid["Kinetic Temperature"]["AeB"]
-                )
+if addHCOp: 
+    for molesp in mole_species: 
+        if molesp != 'hco+':
+            continue
+        ColumnDensityGrid = model_grid["HCO+ Column Density"]["AeB"]
+        print(f"Extracting model flux from {molesp}'s output files...")
+        resultset = Parallel(n_jobs=num_cores)( # `resultset` 裝 getMflux's return, resultset -> [physet, ]
+                        delayed(getMflux)(molesp, Tk ,nH2, Ncolu, Xhcop, flagrow=9)
+                        for Xhcop, the_Nhcop in zip(model_grid["HCO+ Abundance"]["AeB"],
+                                                    model_grid["HCO+ Column Density"]["AeB"])
+                        for Ncolu in the_Nhcop
+                        for nH2 in model_grid["Number Density"]["AeB"]
+                        for Tk in model_grid["Kinetic Temperature"]["AeB"]
+                    )
 
-    # Get model flux for each tansision
-    for t_idx in range(len(transis)):
-        mfluxArray = []
-        for _, mflux in resultset:
-            mfluxArray.append(mflux[t_idx])
-        flux_model[f'{molesp}-{transis[t_idx]}'] = {"Original Flux Model": np.array(mfluxArray),}
+        # Get model flux for each tansision
+        for t_idx in range(len(transis)):
+            mfluxArray = []
+            for _, mflux in resultset:
+                mfluxArray.append(mflux[t_idx])
+            flux_model[f'{molesp}-{transis[t_idx]}'] = {"Original Flux Model": np.array(mfluxArray),}
 
-    # Turn physical conditions value into array and save into `physical_condi`
-    phyArray = []
-    for physet, _ in resultset:
-        phyArray_sub = []
-        for phy in physet.split('_'):       # the string 'nan' work for float, too. 
-            phyArray_sub.append(float(phy)) # follow the order: Tk, nH2, Ncolu, (Xhco+, if have.)
-        phyArray.append(phyArray_sub)
-    physical_condi[f"Tk-nH2-N{molesp}_Xhco+"] = np.array(phyArray)
+        # Turn physical conditions value into array and save into `physical_condi`
+        phyArray = []
+        for physet, _ in resultset:
+            phyArray_sub = []
+            for phy in physet.split('_'):       # the string 'nan' work for float, too. 
+                phyArray_sub.append(float(phy)) # follow the order: Tk, nH2, Ncolu, (Xhco+, if have.)
+            phyArray.append(phyArray_sub)
+        physical_condi[f"Tk-nH2-N{molesp}_Xhco+"] = np.array(phyArray)
 
 # --------------- Save Physical Condition Array into .npy --------------- #
 '''
@@ -353,13 +378,17 @@ by joining two physical arraies from the dict `physical_condi`.
 For more coding detail, please refer to itoya 2026-09-11.
 '''
 phy3 = physical_condi["Tk-nH2-Nco"] # 3 for three physical parameters: [Tk, nH2, N12co]
-num_phy3 = phy3.shape[0] # phy3.shape >> (9568, 3), 3 for three para
-num_Xhcop = len(model_grid["HCO+ Abundance"]["AeB"])
-phy4 = np.zeros((num_phy3 * num_Xhcop, 4)) # 4 for four phyPara: [Tk, nH2, N12co, Xhco+]
-                                           # except phy4.shape >> (95680, 4)
-for i, Xhcop in enumerate(model_grid["HCO+ Abundance"]["AeB"]):
-    phy4[i*num_phy3 : (i+1)*num_phy3] = np.column_stack([phy3, np.full(num_phy3, Xhcop)])
-np.save(f'{npyPath}/phy_plain-model_Tk-nH2-Nco-Xhco+.npy', phy4)
+if addHCOp:
+    num_phy3 = phy3.shape[0] # phy3.shape >> (9568, 3), 3 for three para
+    num_Xhcop = len(model_grid["HCO+ Abundance"]["AeB"])
+    phy4 = np.zeros((num_phy3 * num_Xhcop, 4)) # 4 for four phyPara: [Tk, nH2, N12co, Xhco+]
+                                            # except phy4.shape >> (95680, 4)
+    for i, Xhcop in enumerate(model_grid["HCO+ Abundance"]["AeB"]):
+        phy4[i*num_phy3 : (i+1)*num_phy3] = np.column_stack([phy3, np.full(num_phy3, Xhcop)])
+    np.save(f'{npyPath}/phy_plain-model_Tk-nH2-Nco-Xhco+.npy', phy4)
+else:
+    phy4 = phy3 # for next section (ln369)
+    np.save(f'{npyPath}/phy_plain-model_Tk-nH2-Nco.npy', phy3) # Save phyArray with just 3 paras.
 
 # ------------------------ Align CO Flux Models ------------------------ #
 '''
