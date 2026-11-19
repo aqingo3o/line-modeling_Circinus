@@ -1,4 +1,6 @@
 # pyradex Installation handbook for Linux machine (Ubuntu)
+## Intro
+(wrote in 2025, winter)  
 Hope this handbook can help you work with this **legacy** tool that is still widely used in radiative transfer modeling.  
 I tried to install pyradex on my laptop (macOS 15, named feifei:)), but sadly I failed on both arm64 and x86-64 (via Rosetta2) architectures due to compilation issues with `myRadex`.   
 
@@ -9,7 +11,7 @@ All the credit and reputation goes to the brilliant minds who wrote RADEX, devel
 Much of this work also refers to **keflavich**’s repo `pyradex`.
 
 This handbook mainly focuses on the installation tutorial.  
-For details on the modifications and references of patches, please see *this-repo/patches/patch_ref.md*.
+For details on the modifications and references of patches, please see [patch_ref.md](pyradex_patches/patch_ref.md).
 
 ## Environment info
 - **OS**: Ubuntu20.04
@@ -77,7 +79,8 @@ Make sure you have git installed first:
 git —version
 ```
 Next, we’ll clone the repository *pyradex*.  
-This commands will create a folder named *pyradex/* in the current directory, so first `cd` to wherever you want that folder to be, for example:  
+This commands will create a folder named *pyradex/* in the current directory, so first `cd` to wherever you want that folder to be,  
+for example:  
 ```
 cd ~/pyradex_x86
 ```
@@ -96,7 +99,7 @@ ls
 ```
 
 Next, run the installation script as keflavich instructed.  
-(Use either `python` or ` python3`, depending on your computer setting.)   
+(Use either `python` or `python3`, depending on your computer setting.)   
 ```
 which python     # To cheack the python ur using
 which python3    # To cheack the python ur using
@@ -108,7 +111,7 @@ Try to run it once first, but I guess you will almost certainly hit the first er
 ... fail to resolve ‘personal.sron.nl’
 ```
 
-A more detailed explanation of why this happens can be found in *this-repo/patches/patch_ref.md*.  
+A more detailed explanation of why this happens can be found in [patch_ref.md](pyradex_patches/patch_ref.md).
 For now, you can just **replace** the original *install_radex.py* with the patched file of the same name.  
 ```
 cp ~/Downloads/install_radex.py ~/pyradex_x86/pyradex
@@ -130,13 +133,13 @@ Line #49 in radex.inc:" parameter(hplanck = 6.6260963d-27) " get_parameters: got
 Error sub_global_variables.f90:41:54:
 41 | double precision, parameter :: phy_NaN = transfer(X'FFFFFFFFFFFFFFFF', 0D0)  
 ```
-or something like that seems like nothing success, haha py  
+or something like that seems like nothing success :(  
 
 Here we got two problem:  
 one is from *~/pyradex_x86/pyradex/Radex/src/radex.inc*, another is from *~/pyradex_x86/pyradex/myRaedx/sub_global_variables.f90*     
 I am going to fix the *sub_global_variables.f90* one first because it raises an actual **Error**.  
 
-The detailed explanation is again in *patch_ref.md*.
+The detailed explanation is again in [patch_ref.md](pyradex_patches/patch_ref.md).  
 In short, the method of defining a **null value** has changed, and newer compilers no longer accept the original syntax.
 
 Place the patched versions of *sub_global_variables.f90* and *sub_trivials.f90* into
@@ -155,9 +158,9 @@ Found shared object files=['radex.so'] for RADEX. (if that is a blank, it means 
 Found shared object files=[] for RADEX. (if that is a blank, it means fjdu's myradex didn't install successfully)
 ...
 ```
-`radex` has succeeded!! 非常之他媽恭喜!  
+`radex` has succeeded!! LOTS CONGRAT!  
 Once *radex.so* appears in the [ ], you can place the patched *radex.inc* into *~/pyradex_x86/pyradex/Radex/src*.  
-The detailed explanation is again(2) in *patch_ref.md*. In short, the patch fixes differences in exponent notation between old and new compilers. Hate version issue:(  
+The detailed explanation is again(2) in [patch_ref.md](pyradex_patches/patch_ref.md). In short, the patch fixes differences in exponent notation between old and new compilers. Hate version issue:(  
 ```
 cp ~/Downloads/radex.inc ~/pyradex_x86/pyradex/Radex/src
 ```
