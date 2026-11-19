@@ -22,7 +22,7 @@ For details on the modifications and references of patches, please see [patch_re
 - **numpy** 1.26.2
 
 ## Patches
-Release in *line-modeling_Circinus/patches*  
+You can find them in [this folder](pyradex_patches/).    
 **ONLY apply them if you run into errors.**  Try following keflavich’s installation steps first. Your cloned repo might already be up-to-date.
 Most fixes are just little syntax edits to prevent install errors and warnings. But I’m totally new to Fortran, can’t promise they’re the “best” solutions.   
 
